@@ -83,6 +83,14 @@ repos:
 
 Then run `pre-commit autoupdate` to pin the latest release.
 
+#### Available hooks
+
+| Hook ID | Description |
+|---|---|
+| `mailmap-check` | Fail if any identity is missing from `.mailmap` |
+| `mailmap-fix` | Automatically add missing entries to `.mailmap` |
+| `mailmap-fix-dry-run` | Preview suggested entries without modifying the file |
+
 ### Standalone
 
 ```bash

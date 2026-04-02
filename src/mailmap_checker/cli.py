@@ -83,7 +83,8 @@ def _print_gaps(gaps: list) -> None:
         for identity in group.missing_entries:
             sys.stdout.write(f"    - {identity}\n")
     sys.stdout.write(
-        "\nRun 'mailmap-checker fix --dry-run' to see suggested entries.\n"
+        "\nRun 'mailmap-checker fix --dry-run' to see suggested entries,\n"
+        "or use the 'mailmap-fix-dry-run' pre-commit hook.\n"
     )
 
 

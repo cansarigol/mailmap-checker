@@ -6,3 +6,21 @@
   always_run: true
   pass_filenames: false
   stages: [pre-commit]
+
+- id: mailmap-fix
+  name: Fix .mailmap gaps
+  description: Automatically add missing entries to .mailmap.
+  entry: mailmap-checker fix
+  language: python
+  always_run: true
+  pass_filenames: false
+  stages: [pre-commit]
+
+- id: mailmap-fix-dry-run
+  name: Show suggested .mailmap fixes
+  description: Preview missing .mailmap entries without modifying the file.
+  entry: mailmap-checker fix --dry-run
+  language: python
+  always_run: true
+  pass_filenames: false
+  stages: [pre-commit]
