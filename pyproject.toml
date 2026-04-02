@@ -1,0 +1,117 @@
+[project]
+name = "mailmap-checker"
+version = "0.1.0"
+description = "Pre-commit hook that checks and maintains .mailmap completeness"
+readme = "README.md"
+license = "MIT"
+requires-python = ">=3.10"
+authors = [{ name = "Can Sarigol", email = "ertugrulsarigol@gmail.com" }]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Environment :: Console",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Software Development :: Quality Assurance",
+    "Topic :: Software Development :: Version Control :: Git",
+]
+keywords = ["git", "mailmap", "pre-commit", "identity", "deduplication"]
+
+[project.scripts]
+mailmap-checker = "mailmap_checker.cli:main"
+
+[project.urls]
+Repository = "https://github.com/cansarigol/mailmap-checker"
+Changelog = "https://github.com/cansarigol/mailmap-checker/blob/main/CHANGELOG.md"
+Issues = "https://github.com/cansarigol/mailmap-checker/issues"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/mailmap_checker"]
+
+[dependency-groups]
+dev = [
+    "pytest>=8.0",
+    "pytest-cov>=6.0",
+    "ruff>=0.11",
+    "bandit>=1.8",
+    "poethepoet>=0.34",
+    "pre-commit>=4.0",
+]
+
+[tool.ruff]
+line-length = 88
+target-version = "py310"
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = [
+    "A",
+    "E",
+    "W",
+    "F",
+    "I",
+    "B",
+    "C4",
+    "PIE",
+    "FURB",
+    "PERF",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[tool.coverage.run]
+source = ["mailmap_checker"]
+
+[tool.coverage.report]
+show_missing = true
+fail_under = 100
+
+[tool.bandit]
+targets = ["src"]
+
+[tool.poe]
+env = { UV_PROJECT_ENVIRONMENT = "venv" }
+
+[tool.poe.tasks.setup]
+help = "Install git hooks (run once after cloning)"
+sequence = [
+    { cmd = "pre-commit install" },
+    { cmd = "pre-commit install --hook-type commit-msg" },
+]
+
+[tool.poe.tasks.lint]
+help = "Run ruff linter and format check"
+sequence = [
+    { cmd = "ruff check src tests" },
+    { cmd = "ruff format --check src tests" },
+]
+
+[tool.poe.tasks.format]
+help = "Format code with ruff"
+cmd = "ruff format src tests"
+
+[tool.poe.tasks.test]
+help = "Run tests with coverage"
+cmd = "pytest --cov --cov-report=term-missing"
+
+[tool.poe.tasks.security]
+help = "Run bandit security checks"
+cmd = "bandit -r src"
+
+[tool.poe.tasks.check]
+help = "Run all checks (lint + security + test)"
+sequence = [
+    { ref = "lint" },
+    { ref = "security" },
+    { ref = "test" },
+]

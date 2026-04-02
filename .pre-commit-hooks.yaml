@@ -1,0 +1,8 @@
+- id: mailmap-check
+  name: Check .mailmap completeness
+  description: Detect unmapped Git identities by comparing .mailmap against the full commit history.
+  entry: mailmap-checker check
+  language: python
+  always_run: true
+  pass_filenames: false
+  stages: [pre-commit]
