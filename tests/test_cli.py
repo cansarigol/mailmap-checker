@@ -37,7 +37,7 @@ class TestCheck:
         mailmap.write_text("")
         mock_get.return_value = {
             Identity("Alice", "alice@acme.com"),
-            Identity("Alice", "alice@oldcorp.com"),
+            Identity("alice.j", "alice@acme.com"),
         }
         result = run(["check", "--mailmap", str(mailmap)])
         assert result == 1
@@ -109,6 +109,19 @@ class TestCheck:
             result = run(["check", "--mailmap", str(explicit)])
         assert result == 0
 
+    @patch("mailmap_checker.cli.get_identities")
+    def test_no_local_part_matching_flag(self, mock_get, tmp_path, capsys):
+        mailmap = tmp_path / ".mailmap"
+        mailmap.write_text("")
+        mock_get.return_value = {
+            Identity("Alice Johnson", "alice.johnson@acme.com"),
+            Identity("Alice Johnson", "alice.johnson@oldcorp.com"),
+        }
+        assert run(["check", "--mailmap", str(mailmap)]) == 1
+        assert (
+            run(["check", "--mailmap", str(mailmap), "--no-local-part-matching"]) == 0
+        )
+
 
 class TestInit:
     @patch("mailmap_checker.cli.get_identities")
@@ -134,7 +147,7 @@ class TestInit:
         mailmap = tmp_path / ".mailmap"
         mock_get.return_value = {
             Identity("Alice", "alice@acme.com"),
-            Identity("Alice", "alice@oldcorp.com"),
+            Identity("alice.j", "alice@acme.com"),
         }
         result = run(["init", "--mailmap", str(mailmap)])
         assert result == 1
@@ -165,7 +178,7 @@ class TestFix:
         mailmap.write_text("")
         mock_get.return_value = {
             Identity("Alice", "alice@acme.com"),
-            Identity("Alice", "alice@oldcorp.com"),
+            Identity("alice.j", "alice@acme.com"),
         }
         result = run(["fix", "--mailmap", str(mailmap), "--dry-run"])
         assert result == 1
@@ -178,7 +191,7 @@ class TestFix:
         mailmap.write_text("")
         mock_get.return_value = {
             Identity("Alice", "alice@acme.com"),
-            Identity("Alice", "alice@oldcorp.com"),
+            Identity("alice.j", "alice@acme.com"),
         }
         result = run(["fix", "--mailmap", str(mailmap)])
         assert result == 0
@@ -195,7 +208,7 @@ class TestFix:
         mailmap.write_text("")
         mock_get.return_value = {
             Identity("Alice", "alice@acme.com"),
-            Identity("Alice", "alice@oldcorp.com"),
+            Identity("alice.j", "alice@acme.com"),
         }
         result = run(["fix", "--git-dir", str(repo)])
         assert result == 0

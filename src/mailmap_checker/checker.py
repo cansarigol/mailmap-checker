@@ -1,17 +1,25 @@
 from .models import Identity, IdentityGroup, MailmapEntry
 
+LOCAL_PART_MIN_LENGTH = 8
+
 
 def find_gaps(
     identities: set[Identity],
     entries: list[MailmapEntry],
+    *,
+    local_part_matching: bool = True,
 ) -> list[IdentityGroup]:
-    groups = _build_identity_groups(identities, entries)
+    groups = _build_identity_groups(
+        identities, entries, local_part_matching=local_part_matching
+    )
     return _detect_missing_entries(groups, identities, entries)
 
 
 def _build_identity_groups(
     identities: set[Identity],
     entries: list[MailmapEntry],
+    *,
+    local_part_matching: bool = True,
 ) -> dict[Identity, set[Identity]]:
     uf = _UnionFind()
     all_identities = set(identities)
@@ -23,7 +31,8 @@ def _build_identity_groups(
     for entry in entries:
         uf.union(entry.canonical, entry.alias)
     _union_by_normalized_email(uf, all_identities)
-    _union_by_email_local_part(uf, all_identities)
+    if local_part_matching:
+        _union_by_email_local_part(uf, all_identities)
     return uf.groups()
 
 
@@ -115,7 +124,9 @@ def _union_by_normalized_email(uf: "_UnionFind", identities: set[Identity]) -> N
 def _union_by_email_local_part(uf: "_UnionFind", identities: set[Identity]) -> None:
     by_local: dict[str, list[Identity]] = {}
     for identity in identities:
-        by_local.setdefault(identity.email_local_part, []).append(identity)
+        local = identity.email_local_part
+        if len(local) >= LOCAL_PART_MIN_LENGTH:
+            by_local.setdefault(local, []).append(identity)
     for group in by_local.values():
         if len(group) > 1:
             for i in range(1, len(group)):

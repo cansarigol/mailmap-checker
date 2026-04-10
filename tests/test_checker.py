@@ -51,6 +51,32 @@ class TestFindGapsByLocalPart:
         assert len(gaps) == 1
         assert len(gaps[0].missing_entries) == 1
 
+    def test_disabled_with_flag(self):
+        identities = {
+            Identity("Alice Johnson", "alice.johnson@acme.com"),
+            Identity("Alice Johnson", "alice.johnson@oldcorp.com"),
+        }
+        gaps = find_gaps(identities, [], local_part_matching=False)
+        assert gaps == []
+
+    def test_short_local_part_ignored(self):
+        """Local-parts shorter than LOCAL_PART_MIN_LENGTH are skipped."""
+        identities = {
+            Identity("Aaron X", "aaron@a.com"),
+            Identity("Aaron Y", "aaron@b.com"),
+        }
+        gaps = find_gaps(identities, [])
+        assert gaps == []
+
+    def test_min_length_boundary(self):
+        """Local-part at exactly LOCAL_PART_MIN_LENGTH is matched."""
+        identities = {
+            Identity("Alex B", "a.bataev@hotmail.com"),
+            Identity("Alex B", "a.bataev@outlook.com"),
+        }
+        gaps = find_gaps(identities, [])
+        assert len(gaps) == 1
+
 
 class TestFindGapsCanonicalDetermination:
     def test_uses_existing_canonical_from_entries(self):
@@ -78,8 +104,8 @@ class TestFindGapsCanonicalDetermination:
         assert gaps == []
 
     def test_falls_back_to_first_identity_when_no_canonical(self):
-        id_a = Identity("AAA", "shared@a.com")
-        id_b = Identity("BBB", "shared@b.com")
+        id_a = Identity("AAA", "shared@example.com")
+        id_b = Identity("BBB", "shared@example.com")
         identities = {id_a, id_b}
         gaps = find_gaps(identities, [])
         assert len(gaps) == 1
@@ -144,7 +170,7 @@ class TestFindGapsCaseInsensitive:
         """Canonical determination should be case-insensitive."""
         mailmap_canonical = Identity("Alice Johnson", "Alice@ACME.COM")
         git_id1 = Identity("Alice Johnson", "alice@acme.com")
-        git_id2 = Identity("alice", "alice@oldcorp.com")
+        git_id2 = Identity("alice", "alice@acme.com")
         identities = {git_id1, git_id2}
         entries = [MailmapEntry(canonical=mailmap_canonical, alias=mailmap_canonical)]
         gaps = find_gaps(identities, entries)
@@ -163,10 +189,10 @@ class TestFindGapsEdgeCases:
         assert find_gaps(set(), entries) == []
 
     def test_gaps_sorted_by_canonical_name(self):
-        id_z1 = Identity("Zara", "zara@a.com")
-        id_z2 = Identity("Zara", "zara@b.com")
-        id_a1 = Identity("Ahmed", "ahmed@a.com")
-        id_a2 = Identity("Ahmed", "ahmed@b.com")
+        id_z1 = Identity("Zara", "zara@example.com")
+        id_z2 = Identity("Zara Z", "zara@example.com")
+        id_a1 = Identity("Ahmed", "ahmed@example.com")
+        id_a2 = Identity("Ahmed A", "ahmed@example.com")
         identities = {id_z1, id_z2, id_a1, id_a2}
         gaps = find_gaps(identities, [])
         assert len(gaps) == 2

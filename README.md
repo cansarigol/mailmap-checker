@@ -24,7 +24,7 @@ alice.j       <alice@acme.com>   ← same email, grouped together
 
 **Rule 2 — Same email local-part (different domain)**
 
-Identities whose email local-part (the part before `@`) matches are likely the same person who changed companies or used a different address.
+Identities whose email local-part (the part before `@`) matches are likely the same person who changed companies or used a different address. Local-parts shorter than 8 characters are automatically skipped to reduce false positives.
 
 ```
 Alice Johnson <alice.johnson@acme.com>
@@ -63,12 +63,16 @@ Suggested .mailmap entries:
   Alice J <alice.johnson@personal.net> Alice Johnson <alice.johnson@oldcorp.com>
 ```
 
-> **Note:** When no `.mailmap` exists, the tool picks the alphabetically first identity as the canonical. In this case it chose `Alice J <alice.johnson@personal.net>`, but the actual preferred identity is likely `Alice Johnson <alice.johnson@acme.com>`. The `.mailmap` format places the canonical (left) and the alias (right) on each line. After running `fix`, open `.mailmap` and swap the canonical if needed:
+> **Note:** When no `.mailmap` exists, the tool picks the alphabetically first identity as the canonical. In this case it chose `Alice J <alice.johnson@personal.net>`, but the actual preferred identity is likely `Alice Johnson <alice.johnson@acme.com>`. After running `fix`, open `.mailmap` and swap the canonical if needed:
 >
 > ```
 > Alice Johnson <alice.johnson@acme.com> Alice Johnson <alice.johnson@oldcorp.com>
 > Alice Johnson <alice.johnson@acme.com> Alice J <alice.johnson@personal.net>
 > ```
+
+### Disabling local-part matching
+
+If Rule 2 produces false positives on very large repositories, disable it with `--no-local-part-matching`.
 
 ## Installation
 
@@ -129,7 +133,13 @@ mailmap-checker fix --dry-run
 mailmap-checker fix
 ```
 
-All commands accept `--mailmap <path>` to use a custom file path. When omitted, the tool checks `git config mailmap.file` first, then falls back to `.mailmap` in the repository root.
+### Common options
+
+| Flag | Description |
+|---|---|
+| `--mailmap <path>` | Custom `.mailmap` file path (default: `git config mailmap.file`, then `.mailmap`) |
+| `--git-dir <path>` | Path to git repository (default: current directory) |
+| `--no-local-part-matching` | Disable grouping by email local-part across domains |
 
 ## Contributing
 

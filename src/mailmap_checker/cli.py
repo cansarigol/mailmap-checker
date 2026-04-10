@@ -39,7 +39,11 @@ def _handle_check(args: argparse.Namespace) -> int:
     mailmap_path, git_dir = _resolve_paths(args)
     entries = parse_mailmap(mailmap_path)
     identities = get_identities(git_dir)
-    gaps = find_gaps(identities, entries)
+    gaps = find_gaps(
+        identities,
+        entries,
+        local_part_matching=not args.no_local_part_matching,
+    )
     if not gaps:
         sys.stdout.write("All identities are properly mapped.\n")
         return 0
@@ -61,7 +65,11 @@ def _handle_fix(args: argparse.Namespace) -> int:
     mailmap_path, git_dir = _resolve_paths(args)
     entries = parse_mailmap(mailmap_path)
     identities = get_identities(git_dir)
-    gaps = find_gaps(identities, entries)
+    gaps = find_gaps(
+        identities,
+        entries,
+        local_part_matching=not args.no_local_part_matching,
+    )
     if not gaps:
         sys.stdout.write("No fixes needed.\n")
         return 0
@@ -99,6 +107,12 @@ def _add_common_args(parser: argparse.ArgumentParser) -> None:
         "--git-dir",
         default=None,
         help="Path to git repository (default: current directory)",
+    )
+    parser.add_argument(
+        "--no-local-part-matching",
+        action="store_true",
+        default=False,
+        help="Disable grouping by email local-part across domains",
     )
 
 
