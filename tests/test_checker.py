@@ -71,8 +71,8 @@ class TestFindGapsByLocalPart:
     def test_min_length_boundary(self):
         """Local-part at exactly LOCAL_PART_MIN_LENGTH is matched."""
         identities = {
-            Identity("Alex B", "a.bataev@hotmail.com"),
-            Identity("Alex B", "a.bataev@outlook.com"),
+            Identity("Jane Doe", "jane.doe@acme.com"),
+            Identity("Jane Doe", "jane.doe@oldcorp.com"),
         }
         gaps = find_gaps(identities, [])
         assert len(gaps) == 1
@@ -110,6 +110,33 @@ class TestFindGapsCanonicalDetermination:
         gaps = find_gaps(identities, [])
         assert len(gaps) == 1
         assert gaps[0].canonical == id_a
+
+    def test_prefers_real_name_over_flag_like_name(self):
+        """Names like --global or --local should not be chosen as canonical."""
+        flag = Identity("--global", "jane.doe@example.com")
+        real = Identity("Jane Doe", "jane.doe@example.com")
+        identities = {flag, real}
+        gaps = find_gaps(identities, [])
+        assert len(gaps) == 1
+        assert gaps[0].canonical == real
+
+    def test_prefers_full_name_over_username(self):
+        """A name with a space is preferred over a plain username."""
+        username = Identity("jdoe", "jdoe@example.com")
+        fullname = Identity("Jane Doe", "jdoe@example.com")
+        identities = {username, fullname}
+        gaps = find_gaps(identities, [])
+        assert len(gaps) == 1
+        assert gaps[0].canonical == fullname
+
+    def test_prefers_alpha_name_over_at_prefix(self):
+        """Names starting with @ should not be chosen as canonical."""
+        at_name = Identity("@jdoe123", "jdoe@example.com")
+        real = Identity("Jane Doe", "jdoe@example.com")
+        identities = {at_name, real}
+        gaps = find_gaps(identities, [])
+        assert len(gaps) == 1
+        assert gaps[0].canonical == real
 
 
 class TestFindGapsMailmapOnlyIdentities:
@@ -196,8 +223,8 @@ class TestFindGapsEdgeCases:
         identities = {id_z1, id_z2, id_a1, id_a2}
         gaps = find_gaps(identities, [])
         assert len(gaps) == 2
-        assert gaps[0].canonical.name == "Ahmed"
-        assert gaps[1].canonical.name == "Zara"
+        assert gaps[0].canonical.name == "Ahmed A"
+        assert gaps[1].canonical.name == "Zara Z"
 
     def test_multiple_missing_in_one_group(self):
         canonical = Identity("Alice Johnson", "Alice.Johnson@acme.com")

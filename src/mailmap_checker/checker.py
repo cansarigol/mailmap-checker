@@ -109,7 +109,15 @@ def _determine_canonical(
     for member in all_members:
         if matches_canonical(member):
             return member
-    return git_members[0]
+    return sorted(git_members, key=_canonical_sort_key)[0]
+
+
+def _canonical_sort_key(identity: Identity) -> tuple[bool, bool, str, str]:
+    """Prefer real names: starts with letter → contains space → alphabetical."""
+    name = identity.name
+    starts_alpha = name[:1].isalpha() if name else False
+    has_space = " " in name
+    return (not starts_alpha, not has_space, name, identity.email)
 
 
 def _union_by_normalized_email(uf: "_UnionFind", identities: set[Identity]) -> None:

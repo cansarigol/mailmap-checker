@@ -123,7 +123,9 @@ mailmap-checker init
 
 ### `fix`
 
-Preview or apply suggested `.mailmap` entries.
+Preview or apply suggested `.mailmap` entries. New entries are inserted in **sorted order** (not appended at the end), and canonical groups are separated by blank lines.
+
+The canonical identity for each group is chosen by preferring names that look like real person names (e.g. `Alice Johnson`) over usernames (`alicej`), git config artifacts (`--global`), or handle-style names (`@username`).
 
 ```bash
 # Preview

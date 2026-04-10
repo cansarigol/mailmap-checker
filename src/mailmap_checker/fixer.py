@@ -17,9 +17,9 @@ def generate_entries(gaps: list[IdentityGroup]) -> list[str]:
 def apply_fixes(mailmap_path: Path, new_entries: list[str]) -> None:
     lines = _read_lines(mailmap_path)
     grouped = _group_by_canonical(new_entries)
-    insertions, appends = _plan_insertions(lines, grouped)
-    _apply_insertions(lines, insertions)
-    _apply_appends(lines, appends)
+    matched, unmatched = _classify_groups(lines, grouped)
+    _insert_matched(lines, matched)
+    _insert_sorted(lines, unmatched)
     mailmap_path.write_text("".join(lines), encoding="utf-8")
 
 
@@ -50,22 +50,22 @@ def _find_last_match(lines: list[str], canonical_prefix: str) -> int | None:
     return last_idx
 
 
-def _plan_insertions(
+def _classify_groups(
     lines: list[str],
     grouped: dict[str, list[str]],
-) -> tuple[list[tuple[int, list[str]]], list[str]]:
-    insertions: list[tuple[int, list[str]]] = []
-    appends: list[str] = []
+) -> tuple[list[tuple[int, list[str]]], list[tuple[str, list[str]]]]:
+    matched: list[tuple[int, list[str]]] = []
+    unmatched: list[tuple[str, list[str]]] = []
     for canonical_prefix, entries in grouped.items():
         insert_at = _find_last_match(lines, canonical_prefix)
         if insert_at is not None:
-            insertions.append((insert_at, entries))
+            matched.append((insert_at, entries))
         else:
-            appends.extend(entries)
-    return insertions, appends
+            unmatched.append((canonical_prefix, entries))
+    return matched, unmatched
 
 
-def _apply_insertions(
+def _insert_matched(
     lines: list[str],
     insertions: list[tuple[int, list[str]]],
 ) -> None:
@@ -74,11 +74,40 @@ def _apply_insertions(
             lines.insert(idx + i, entry + "\n")
 
 
-def _apply_appends(lines: list[str], appends: list[str]) -> None:
-    if not appends:
+def _find_sorted_position(lines: list[str], canonical_prefix: str) -> int:
+    prefix_lower = canonical_prefix.strip().lower()
+    for i, line in enumerate(lines):
+        stripped = line.strip()
+        if not stripped or stripped.startswith("#"):
+            continue
+        if stripped.lower() > prefix_lower:
+            return i
+    return len(lines)
+
+
+def _insert_sorted(
+    lines: list[str],
+    groups: list[tuple[str, list[str]]],
+) -> None:
+    if not groups:
         return
     if lines and not lines[-1].endswith("\n"):
         lines[-1] += "\n"
-    if lines:
-        lines.append("\n")
-    lines.extend(entry + "\n" for entry in appends)
+    sorted_groups = sorted(groups, key=lambda g: g[0].lower())
+    by_pos: dict[int, list[list[str]]] = {}
+    for canonical_prefix, entries in sorted_groups:
+        pos = _find_sorted_position(lines, canonical_prefix)
+        by_pos.setdefault(pos, []).append(entries)
+    for pos in sorted(by_pos, reverse=True):
+        entry_groups = by_pos[pos]
+        block: list[str] = []
+        if pos > 0 and lines[pos - 1].strip():
+            block.append("\n")
+        for i, entries in enumerate(entry_groups):
+            if i > 0:
+                block.append("\n")
+            block.extend(entry + "\n" for entry in entries)
+        if pos < len(lines) and lines[pos].strip():
+            block.append("\n")
+        for i, line in enumerate(block):
+            lines.insert(pos + i, line)

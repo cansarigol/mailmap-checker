@@ -99,8 +99,8 @@ class TestApplyFixesInsertion:
         assert lines[4] == "Bob <bob@acme.com> B2 <b2@x.com>"
 
 
-class TestApplyFixesAppend:
-    def test_appends_when_no_matching_canonical(self, tmp_path):
+class TestApplyFixesSorted:
+    def test_appends_after_last_entry_when_sorted_later(self, tmp_path):
         mailmap = tmp_path / ".mailmap"
         mailmap.write_text("Alice <alice@acme.com> A1 <a1@x.com>\n")
         apply_fixes(
@@ -111,6 +111,36 @@ class TestApplyFixesAppend:
         assert lines[0] == "Alice <alice@acme.com> A1 <a1@x.com>"
         assert lines[1] == ""
         assert lines[2] == "Bob <bob@acme.com> OldBob <old-bob@x.com>"
+
+    def test_inserts_in_sorted_position_between_entries(self, tmp_path):
+        mailmap = tmp_path / ".mailmap"
+        mailmap.write_text(
+            "Alice <alice@acme.com> A1 <a1@x.com>\n"
+            "\n"
+            "Charlie <charlie@acme.com> C1 <c1@x.com>\n"
+        )
+        apply_fixes(
+            mailmap,
+            ["Bob <bob@acme.com> B1 <b1@x.com>"],
+        )
+        lines = mailmap.read_text().splitlines()
+        assert lines[0] == "Alice <alice@acme.com> A1 <a1@x.com>"
+        assert lines[1] == ""
+        assert lines[2] == "Bob <bob@acme.com> B1 <b1@x.com>"
+        assert lines[3] == ""
+        assert lines[4] == "Charlie <charlie@acme.com> C1 <c1@x.com>"
+
+    def test_inserts_before_first_entry_when_sorted_earlier(self, tmp_path):
+        mailmap = tmp_path / ".mailmap"
+        mailmap.write_text("Bob <bob@acme.com> B1 <b1@x.com>\n")
+        apply_fixes(
+            mailmap,
+            ["Alice <alice@acme.com> A1 <a1@x.com>"],
+        )
+        lines = mailmap.read_text().splitlines()
+        assert lines[0] == "Alice <alice@acme.com> A1 <a1@x.com>"
+        assert lines[1] == ""
+        assert lines[2] == "Bob <bob@acme.com> B1 <b1@x.com>"
 
     def test_creates_new_file(self, tmp_path):
         mailmap = tmp_path / ".mailmap"
@@ -139,6 +169,42 @@ class TestApplyFixesAppend:
             ["Alice <alice@acme.com> old <old@x.com>"],
         )
         assert mailmap.read_text() == "Alice <alice@acme.com> old <old@x.com>\n"
+
+    def test_multiple_groups_with_blank_separator(self, tmp_path):
+        mailmap = tmp_path / ".mailmap"
+        mailmap.write_text("Alice <alice@acme.com> A1 <a1@x.com>\n")
+        apply_fixes(
+            mailmap,
+            [
+                "Bob <bob@acme.com> OldBob <old@x.com>",
+                "Bob <bob@acme.com> OldBob2 <old2@x.com>",
+                "Charlie <charlie@acme.com> OldCharlie <old@x.com>",
+            ],
+        )
+        lines = mailmap.read_text().splitlines()
+        assert lines[0] == "Alice <alice@acme.com> A1 <a1@x.com>"
+        assert lines[1] == ""
+        assert lines[2] == "Bob <bob@acme.com> OldBob <old@x.com>"
+        assert lines[3] == "Bob <bob@acme.com> OldBob2 <old2@x.com>"
+        assert lines[4] == ""
+        assert lines[5] == "Charlie <charlie@acme.com> OldCharlie <old@x.com>"
+
+    def test_sorted_at_different_positions(self, tmp_path):
+        mailmap = tmp_path / ".mailmap"
+        mailmap.write_text("Bob <bob@acme.com> B1 <b1@x.com>\n")
+        apply_fixes(
+            mailmap,
+            [
+                "Alice <alice@acme.com> A1 <a1@x.com>",
+                "Charlie <charlie@acme.com> C1 <c1@x.com>",
+            ],
+        )
+        lines = mailmap.read_text().splitlines()
+        assert lines[0] == "Alice <alice@acme.com> A1 <a1@x.com>"
+        assert lines[1] == ""
+        assert lines[2] == "Bob <bob@acme.com> B1 <b1@x.com>"
+        assert lines[3] == ""
+        assert lines[4] == "Charlie <charlie@acme.com> C1 <c1@x.com>"
 
 
 class TestApplyFixesMixed:

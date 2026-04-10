@@ -4,6 +4,14 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/), and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [0.3.0] - 2026-04-10
+
+### Added
+
+- Sorted insertion: new `.mailmap` entries are now inserted in alphabetical order instead of appended at the end, keeping the file sorted.
+- Blank line separators between canonical groups in generated `.mailmap` entries.
+- Smarter canonical selection: prefers real names (e.g. `Alice Johnson`) over git config artifacts (`--global`), usernames (`alicej`), or handle-style names (`@username`).
+
 ## [0.2.1] - 2026-04-10
 
 ### Added
@@ -46,6 +54,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/), and this
 - Identity grouping via Union-Find: same email (case-insensitive) and same email local-part across domains.
 - Pre-commit hook integration (`mailmap-check`).
 
+[0.3.0]: https://github.com/cansarigol/mailmap-checker/compare/v0.2.1...v0.3.0
 [0.2.1]: https://github.com/cansarigol/mailmap-checker/compare/v0.2.0...v0.2.1
 [0.2.0]: https://github.com/cansarigol/mailmap-checker/compare/v0.1.1...v0.2.0
 [0.1.1]: https://github.com/cansarigol/mailmap-checker/compare/v0.1.0...v0.1.1
