@@ -34,7 +34,7 @@ def get_mailmap_file_config(git_dir: Path | None = None) -> str | None:
 
 def _parse_identities(output: str) -> set[Identity]:
     identities: set[Identity] = set()
-    for line in output.strip().splitlines():
+    for line in set(output.splitlines()):
         line = line.strip()
         if not line:
             continue

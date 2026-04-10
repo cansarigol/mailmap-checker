@@ -68,6 +68,15 @@ class TestFindGapsByLocalPart:
         gaps = find_gaps(identities, [])
         assert gaps == []
 
+    def test_ignored_local_part_not_grouped(self):
+        """Known generic local-parts like github.com should not be grouped."""
+        identities = {
+            Identity("Alice", "github.com@alice.dev"),
+            Identity("Bob", "github.com@bob.org"),
+        }
+        gaps = find_gaps(identities, [])
+        assert gaps == []
+
     def test_min_length_boundary(self):
         """Local-part at exactly LOCAL_PART_MIN_LENGTH is matched."""
         identities = {
@@ -76,6 +85,15 @@ class TestFindGapsByLocalPart:
         }
         gaps = find_gaps(identities, [])
         assert len(gaps) == 1
+
+    def test_same_local_part_different_name_not_grouped(self):
+        """Same local-part but different names should not be grouped."""
+        identities = {
+            Identity("Jane Surname1", "jane.doe@acme.com"),
+            Identity("Jane Surname2", "jane.doe@other.com"),
+        }
+        gaps = find_gaps(identities, [])
+        assert gaps == []
 
 
 class TestFindGapsCanonicalDetermination:
@@ -227,9 +245,9 @@ class TestFindGapsEdgeCases:
         assert gaps[1].canonical.name == "Zara Z"
 
     def test_multiple_missing_in_one_group(self):
-        canonical = Identity("Alice Johnson", "Alice.Johnson@acme.com")
-        alias1 = Identity("alice", "alice.johnson@oldcorp.com")
-        alias2 = Identity("Alice J", "alice.johnson@legacy.com")
+        canonical = Identity("Alice Johnson", "alice@acme.com")
+        alias1 = Identity("alice", "alice@acme.com")
+        alias2 = Identity("Alice J", "alice@acme.com")
         identities = {canonical, alias1, alias2}
         entries = [MailmapEntry(canonical=canonical, alias=canonical)]
         gaps = find_gaps(identities, entries)

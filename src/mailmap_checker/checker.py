@@ -1,6 +1,13 @@
 from .models import Identity, IdentityGroup, MailmapEntry
 
 LOCAL_PART_MIN_LENGTH = 8
+_IGNORED_LOCAL_PARTS = frozenset(
+    {
+        "github.com",
+        "noreply",
+        "users.noreply",
+    }
+)
 
 
 def find_gaps(
@@ -130,11 +137,12 @@ def _union_by_normalized_email(uf: "_UnionFind", identities: set[Identity]) -> N
 
 
 def _union_by_email_local_part(uf: "_UnionFind", identities: set[Identity]) -> None:
-    by_local: dict[str, list[Identity]] = {}
+    by_local: dict[tuple[str, str], list[Identity]] = {}
     for identity in identities:
         local = identity.email_local_part
-        if len(local) >= LOCAL_PART_MIN_LENGTH:
-            by_local.setdefault(local, []).append(identity)
+        if len(local) >= LOCAL_PART_MIN_LENGTH and local not in _IGNORED_LOCAL_PARTS:
+            key = (local, identity.name.lower())
+            by_local.setdefault(key, []).append(identity)
     for group in by_local.values():
         if len(group) > 1:
             for i in range(1, len(group)):

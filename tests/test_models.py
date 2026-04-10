@@ -72,12 +72,12 @@ class TestIdentityValidation:
         assert identity.name == ""
 
     def test_allows_unicode_name(self):
-        identity = Identity("Emin Bugra Saral", "emin@example.com")
-        assert identity.name == "Emin Bugra Saral"
+        identity = Identity("Ünsal Özgür", "unsal@example.com")
+        assert identity.name == "Ünsal Özgür"
 
     def test_allows_hyphenated_name(self):
-        identity = Identity("Anne-Marie O'Brien", "anne@example.com")
-        assert identity.name == "Anne-Marie O'Brien"
+        identity = Identity("Mary-Jane O'Dell", "mary@example.com")
+        assert identity.name == "Mary-Jane O'Dell"
 
     def test_allows_noreply_email(self):
         identity = Identity("Alice", "12345+alice@users.noreply.github.com")

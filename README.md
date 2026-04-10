@@ -24,24 +24,23 @@ alice.j       <alice@acme.com>   ← same email, grouped together
 
 **Rule 2 — Same email local-part (different domain)**
 
-Identities whose email local-part (the part before `@`) matches are likely the same person who changed companies or used a different address. Local-parts shorter than 8 characters are automatically skipped to reduce false positives.
+Identities whose email local-part (the part before `@`) **and name** match are likely the same person who changed companies or used a different address. Local-parts shorter than 8 characters are automatically skipped to reduce false positives.
 
 ```
 Alice Johnson <alice.johnson@acme.com>
-Alice Johnson <alice.johnson@oldcorp.com>    ← same local-part, grouped
-Alice J       <alice.johnson@personal.net>   ← same local-part, grouped
+Alice Johnson <alice.johnson@oldcorp.com>    ← same local-part + name, grouped
 ```
 
 Once groups are built, the checker looks for identities that are **not mapped** in `.mailmap`. If a group has more than one identity and any of them is missing from the file, the hook fails and reports the gap.
 
 ### Example
 
-Given these three identities in git history and an empty `.mailmap`:
+Given these identities in git history and an empty `.mailmap`:
 
 ```
 Alice Johnson <alice.johnson@acme.com>
 Alice Johnson <alice.johnson@oldcorp.com>
-Alice J       <alice.johnson@personal.net>
+alice.j       <alice.johnson@acme.com>
 ```
 
 `mailmap-checker check` detects the gap:
@@ -49,9 +48,9 @@ Alice J       <alice.johnson@personal.net>
 ```
 Found 2 unmapped identities in 1 group:
 
-  Canonical: Alice J <alice.johnson@personal.net>
-    - Alice Johnson <alice.johnson@acme.com>
+  Canonical: Alice Johnson <alice.johnson@acme.com>
     - Alice Johnson <alice.johnson@oldcorp.com>
+    - alice.j <alice.johnson@acme.com>
 ```
 
 `mailmap-checker fix --dry-run` suggests entries to add:
@@ -59,16 +58,9 @@ Found 2 unmapped identities in 1 group:
 ```
 Suggested .mailmap entries:
 
-  Alice J <alice.johnson@personal.net> Alice Johnson <alice.johnson@acme.com>
-  Alice J <alice.johnson@personal.net> Alice Johnson <alice.johnson@oldcorp.com>
+  Alice Johnson <alice.johnson@acme.com> Alice Johnson <alice.johnson@oldcorp.com>
+  Alice Johnson <alice.johnson@acme.com> alice.j <alice.johnson@acme.com>
 ```
-
-> **Note:** When no `.mailmap` exists, the tool picks the alphabetically first identity as the canonical. In this case it chose `Alice J <alice.johnson@personal.net>`, but the actual preferred identity is likely `Alice Johnson <alice.johnson@acme.com>`. After running `fix`, open `.mailmap` and swap the canonical if needed:
->
-> ```
-> Alice Johnson <alice.johnson@acme.com> Alice Johnson <alice.johnson@oldcorp.com>
-> Alice Johnson <alice.johnson@acme.com> Alice J <alice.johnson@personal.net>
-> ```
 
 ### Disabling local-part matching
 
