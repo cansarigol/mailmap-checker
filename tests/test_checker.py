@@ -64,6 +64,19 @@ class TestFindGapsCanonicalDetermination:
         assert gaps[0].canonical == canonical
         assert gaps[0].missing_entries == [unmapped_alias]
 
+    def test_uses_mailmap_canonical_not_in_git_log(self):
+        """Canonical from mailmap is not a git identity but should be used."""
+        mailmap_canonical = Identity("Alice Johnson", "alice@acme.com")
+        alias1 = Identity("old1", "old1@x.com")
+        alias2 = Identity("old2", "old2@x.com")
+        identities = {alias1, alias2}
+        entries = [
+            MailmapEntry(canonical=mailmap_canonical, alias=alias1),
+            MailmapEntry(canonical=mailmap_canonical, alias=alias2),
+        ]
+        gaps = find_gaps(identities, entries)
+        assert gaps == []
+
     def test_falls_back_to_first_identity_when_no_canonical(self):
         id_a = Identity("AAA", "shared@a.com")
         id_b = Identity("BBB", "shared@b.com")
@@ -80,6 +93,63 @@ class TestFindGapsMailmapOnlyIdentities:
         identities = {git_identity}
         entries = [MailmapEntry(canonical=mailmap_canonical, alias=git_identity)]
         assert find_gaps(identities, entries) == []
+
+
+class TestFindGapsEmailOnlyAlias:
+    def test_format3_email_only_alias_no_false_positive(self):
+        """Format 3: Proper Name <proper@email> <commit@email>"""
+        canonical = Identity("Alice Johnson", "alice@acme.com")
+        alias = Identity("", "alice@oldcorp.com")
+        git_id = Identity("old alice", "alice@oldcorp.com")
+        identities = {canonical, git_id}
+        entries = [MailmapEntry(canonical=canonical, alias=alias)]
+        gaps = find_gaps(identities, entries)
+        assert gaps == []
+
+    def test_format2_email_only_replacement_no_false_positive(self):
+        """Format 2: <proper@email> <commit@email>"""
+        canonical = Identity("", "alice@acme.com")
+        alias = Identity("", "alice@oldcorp.com")
+        git_id1 = Identity("Alice", "alice@acme.com")
+        git_id2 = Identity("old alice", "alice@oldcorp.com")
+        identities = {git_id1, git_id2}
+        entries = [MailmapEntry(canonical=canonical, alias=alias)]
+        gaps = find_gaps(identities, entries)
+        assert gaps == []
+
+    def test_email_only_alias_covers_multiple_names(self):
+        """An email-only alias should cover all identities with that email."""
+        canonical = Identity("Alice Johnson", "alice@acme.com")
+        alias = Identity("", "alice@oldcorp.com")
+        git_id1 = Identity("Alice", "alice@oldcorp.com")
+        git_id2 = Identity("alice.j", "alice@oldcorp.com")
+        identities = {canonical, git_id1, git_id2}
+        entries = [MailmapEntry(canonical=canonical, alias=alias)]
+        gaps = find_gaps(identities, entries)
+        assert gaps == []
+
+
+class TestFindGapsCaseInsensitive:
+    def test_alias_name_case_insensitive(self):
+        """Spec: names are matched case-insensitively."""
+        canonical = Identity("Alice Johnson", "alice@acme.com")
+        alias = Identity("ALICE", "alice@oldcorp.com")
+        git_id = Identity("alice", "alice@oldcorp.com")
+        identities = {canonical, git_id}
+        entries = [MailmapEntry(canonical=canonical, alias=alias)]
+        gaps = find_gaps(identities, entries)
+        assert gaps == []
+
+    def test_canonical_lookup_case_insensitive(self):
+        """Canonical determination should be case-insensitive."""
+        mailmap_canonical = Identity("Alice Johnson", "Alice@ACME.COM")
+        git_id1 = Identity("Alice Johnson", "alice@acme.com")
+        git_id2 = Identity("alice", "alice@oldcorp.com")
+        identities = {git_id1, git_id2}
+        entries = [MailmapEntry(canonical=mailmap_canonical, alias=mailmap_canonical)]
+        gaps = find_gaps(identities, entries)
+        assert len(gaps) == 1
+        assert gaps[0].canonical == git_id1
 
 
 class TestFindGapsEdgeCases:

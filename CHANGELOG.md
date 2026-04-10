@@ -4,6 +4,18 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/), and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [0.2.0] - 2026-04-10
+
+### Added
+
+- Committer identity support: scans both author (`%an`/`%ae`) and committer (`%cn`/`%ce`) identities from Git history.
+- `mailmap.file` Git config support: automatically reads the `mailmap.file` configuration when no explicit `--mailmap` is given.
+
+### Fixed
+
+- Format 2/3 false positives: email-only alias entries (`<proper@email> <commit@email>` and `Name <proper@email> <commit@email>`) no longer report already-mapped identities as missing.
+- Case-insensitive name matching: alias and canonical lookups now compare names case-insensitively, per the [gitmailmap](https://git-scm.com/docs/gitmailmap) specification.
+
 ## [0.1.1] - 2026-04-02
 
 ### Added
@@ -26,5 +38,6 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/), and this
 - Identity grouping via Union-Find: same email (case-insensitive) and same email local-part across domains.
 - Pre-commit hook integration (`mailmap-check`).
 
+[0.2.0]: https://github.com/cansarigol/mailmap-checker/compare/v0.1.1...v0.2.0
 [0.1.1]: https://github.com/cansarigol/mailmap-checker/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/cansarigol/mailmap-checker/releases/tag/v0.1.0

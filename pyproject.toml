@@ -1,6 +1,6 @@
 [project]
 name = "mailmap-checker"
-version = "0.1.1"
+version = "0.2.0"
 description = "Pre-commit hook that checks and maintains .mailmap completeness"
 readme = "README.md"
 license = "MIT"
@@ -17,6 +17,7 @@ classifiers = [
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
     "Topic :: Software Development :: Quality Assurance",
     "Topic :: Software Development :: Version Control :: Git",
 ]

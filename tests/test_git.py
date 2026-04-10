@@ -1,7 +1,7 @@
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
-from mailmap_checker.git import get_identities
+from mailmap_checker.git import get_identities, get_mailmap_file_config
 from mailmap_checker.models import Identity
 
 
@@ -9,13 +9,27 @@ class TestGetIdentities:
     @patch("subprocess.run")
     def test_parses_valid_identities(self, mock_run):
         mock_run.return_value = MagicMock(
-            stdout="Alice Johnson <alice@acme.com>\nBob Smith <bob@acme.com>\n"
+            stdout=(
+                "Alice Johnson <alice@acme.com>\n"
+                "Alice Johnson <alice@acme.com>\n"
+                "Bob Smith <bob@acme.com>\n"
+                "Bob Smith <bob@acme.com>\n"
+            )
         )
         identities = get_identities()
         assert identities == {
             Identity("Alice Johnson", "alice@acme.com"),
             Identity("Bob Smith", "bob@acme.com"),
         }
+
+    @patch("subprocess.run")
+    def test_includes_committer_identities(self, mock_run):
+        mock_run.return_value = MagicMock(
+            stdout=("Alice <alice@acme.com>\nCommitter <committer@acme.com>\n")
+        )
+        identities = get_identities()
+        assert Identity("Alice", "alice@acme.com") in identities
+        assert Identity("Committer", "committer@acme.com") in identities
 
     @patch("subprocess.run")
     def test_deduplicates(self, mock_run):
@@ -68,11 +82,48 @@ class TestGetIdentities:
         mock_run.return_value = MagicMock(stdout="")
         get_identities()
         cmd = mock_run.call_args[0][0]
-        assert cmd == ["git", "log", "--format=%an <%ae>"]
+        assert cmd == ["git", "log", "--format=%an <%ae>%n%cn <%ce>"]
 
     @patch("subprocess.run")
     def test_with_git_dir(self, mock_run):
         mock_run.return_value = MagicMock(stdout="")
         get_identities(Path("/repo"))
         cmd = mock_run.call_args[0][0]
-        assert cmd == ["git", "-C", str(Path("/repo")), "log", "--format=%an <%ae>"]
+        assert cmd == [
+            "git",
+            "-C",
+            str(Path("/repo")),
+            "log",
+            "--format=%an <%ae>%n%cn <%ce>",
+        ]
+
+
+class TestGetMailmapFileConfig:
+    @patch("subprocess.run")
+    def test_returns_configured_path(self, mock_run):
+        mock_run.return_value = MagicMock(returncode=0, stdout="/custom/.mailmap\n")
+        assert get_mailmap_file_config() == "/custom/.mailmap"
+
+    @patch("subprocess.run")
+    def test_returns_none_when_not_configured(self, mock_run):
+        mock_run.return_value = MagicMock(returncode=1, stdout="")
+        assert get_mailmap_file_config() is None
+
+    @patch("subprocess.run")
+    def test_returns_none_for_empty_value(self, mock_run):
+        mock_run.return_value = MagicMock(returncode=0, stdout="  \n")
+        assert get_mailmap_file_config() is None
+
+    @patch("subprocess.run")
+    def test_with_git_dir(self, mock_run):
+        mock_run.return_value = MagicMock(returncode=0, stdout="/p/.mailmap\n")
+        get_mailmap_file_config(Path("/repo"))
+        cmd = mock_run.call_args[0][0]
+        assert cmd == ["git", "-C", str(Path("/repo")), "config", "mailmap.file"]
+
+    @patch("subprocess.run")
+    def test_without_git_dir(self, mock_run):
+        mock_run.return_value = MagicMock(returncode=1, stdout="")
+        get_mailmap_file_config()
+        cmd = mock_run.call_args[0][0]
+        assert cmd == ["git", "config", "mailmap.file"]

@@ -5,11 +5,13 @@
 [![CI](https://github.com/cansarigol/mailmap-checker/actions/workflows/ci.yml/badge.svg)](https://github.com/cansarigol/mailmap-checker/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
-A pre-commit hook that detects unmapped Git identities by comparing your `.mailmap` against the full commit history. It groups authors by email address and email local-part so duplicates are caught even across domain changes.
+A pre-commit hook that detects unmapped Git identities by comparing your `.mailmap` against the full commit history. It groups authors and committers by email address and email local-part so duplicates are caught even across domain changes.
+
+Follows the [gitmailmap](https://git-scm.com/docs/gitmailmap) specification: all four mapping formats are supported, and both names and emails are matched case-insensitively.
 
 ## How it works
 
-The checker scans `git log` for all unique author identities and groups them using two rules:
+The checker scans `git log` for all unique author **and committer** identities and groups them using two rules:
 
 **Rule 1 — Same email (case-insensitive)**
 
@@ -101,7 +103,7 @@ pip install mailmap-checker
 
 ### `check`
 
-Scan all Git authors and exit non-zero if any identity is missing from `.mailmap`.
+Scan all Git authors and committers and exit non-zero if any identity is missing from `.mailmap`.
 
 ```bash
 mailmap-checker check
@@ -127,7 +129,7 @@ mailmap-checker fix --dry-run
 mailmap-checker fix
 ```
 
-All commands accept `--mailmap <path>` to use a custom file path.
+All commands accept `--mailmap <path>` to use a custom file path. When omitted, the tool checks `git config mailmap.file` first, then falls back to `.mailmap` in the repository root.
 
 ## Contributing
 

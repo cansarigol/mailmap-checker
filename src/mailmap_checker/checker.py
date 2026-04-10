@@ -32,7 +32,23 @@ def _detect_missing_entries(
     git_identities: set[Identity],
     entries: list[MailmapEntry],
 ) -> list[IdentityGroup]:
-    known_aliases = {(e.alias.name, e.alias.email) for e in entries}
+    # Email-only aliases (empty name in alias) match any name with that email
+    email_only_aliases = {e.alias.normalized_email for e in entries if not e.alias.name}
+    # Named aliases use case-insensitive comparison (per gitmailmap spec)
+    named_aliases = {
+        (e.alias.name.lower(), e.alias.normalized_email)
+        for e in entries
+        if e.alias.name
+    }
+
+    def is_covered(identity: Identity) -> bool:
+        if identity.normalized_email in email_only_aliases:
+            return True
+        return (
+            identity.name.lower(),
+            identity.normalized_email,
+        ) in named_aliases
+
     gaps: list[IdentityGroup] = []
     for members_set in groups.values():
         git_members = sorted(
@@ -42,11 +58,7 @@ def _detect_missing_entries(
         if len(git_members) <= 1:
             continue
         canonical = _determine_canonical(git_members, members_set, entries)
-        missing = [
-            m
-            for m in git_members
-            if m != canonical and (m.name, m.email) not in known_aliases
-        ]
+        missing = [m for m in git_members if m != canonical and not is_covered(m)]
         if missing:
             gaps.append(
                 IdentityGroup(
@@ -63,9 +75,30 @@ def _determine_canonical(
     all_members: set[Identity],
     entries: list[MailmapEntry],
 ) -> Identity:
-    canonical_identities = {(e.canonical.name, e.canonical.email) for e in entries}
+    # Email-only canonicals (empty name) match any identity with that email
+    canonical_email_only = {
+        e.canonical.normalized_email for e in entries if not e.canonical.name
+    }
+    canonical_named = {
+        (e.canonical.name.lower(), e.canonical.normalized_email)
+        for e in entries
+        if e.canonical.name
+    }
+
+    def matches_canonical(member: Identity) -> bool:
+        if member.normalized_email in canonical_email_only:
+            return True
+        return (
+            member.name.lower(),
+            member.normalized_email,
+        ) in canonical_named
+
+    # Prefer git members over mailmap-only identities
+    for member in git_members:
+        if matches_canonical(member):
+            return member
     for member in all_members:
-        if (member.name, member.email) in canonical_identities:
+        if matches_canonical(member):
             return member
     return git_members[0]
 

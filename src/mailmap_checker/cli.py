@@ -4,7 +4,7 @@ from pathlib import Path
 
 from .checker import find_gaps
 from .fixer import apply_fixes, generate_entries
-from .git import get_identities
+from .git import get_identities, get_mailmap_file_config
 from .parser import parse_mailmap
 
 _DEFAULT_MAILMAP = ".mailmap"
@@ -25,11 +25,14 @@ def run(argv: list[str] | None = None) -> int:
 
 def _resolve_paths(args: argparse.Namespace) -> tuple[Path, Path | None]:
     git_dir = Path(args.git_dir) if args.git_dir else None
-    if args.mailmap == _DEFAULT_MAILMAP and git_dir:
-        mailmap_path = git_dir / _DEFAULT_MAILMAP
-    else:
-        mailmap_path = Path(args.mailmap)
-    return mailmap_path, git_dir
+    if args.mailmap != _DEFAULT_MAILMAP:
+        return Path(args.mailmap), git_dir
+    configured = get_mailmap_file_config(git_dir)
+    if configured:
+        return Path(configured), git_dir
+    if git_dir:
+        return git_dir / _DEFAULT_MAILMAP, git_dir
+    return Path(_DEFAULT_MAILMAP), git_dir
 
 
 def _handle_check(args: argparse.Namespace) -> int:

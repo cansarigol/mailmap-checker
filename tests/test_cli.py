@@ -45,14 +45,16 @@ class TestCheck:
         assert "unmapped" in output
         assert "dry-run" in output
 
+    @patch("mailmap_checker.cli.get_mailmap_file_config", return_value=None)
     @patch("mailmap_checker.cli.get_identities")
-    def test_default_mailmap_path(self, mock_get):
+    def test_default_mailmap_path(self, mock_get, _mock_cfg):
         mock_get.return_value = {Identity("Alice", "alice@example.com")}
         result = run(["check"])
         assert result == 0
 
+    @patch("mailmap_checker.cli.get_mailmap_file_config", return_value=None)
     @patch("mailmap_checker.cli.get_identities")
-    def test_git_dir_resolves_mailmap(self, mock_get, tmp_path):
+    def test_git_dir_resolves_mailmap(self, mock_get, _mock_cfg, tmp_path):
         repo = tmp_path / "repo"
         repo.mkdir()
         mailmap = repo / ".mailmap"
@@ -62,8 +64,9 @@ class TestCheck:
         assert result == 0
         mock_get.assert_called_once_with(repo)
 
+    @patch("mailmap_checker.cli.get_mailmap_file_config", return_value=None)
     @patch("mailmap_checker.cli.get_identities")
-    def test_explicit_mailmap_overrides_git_dir(self, mock_get, tmp_path):
+    def test_explicit_mailmap_overrides_git_dir(self, mock_get, _mock_cfg, tmp_path):
         repo = tmp_path / "repo"
         repo.mkdir()
         custom = tmp_path / "custom.mailmap"
@@ -78,6 +81,32 @@ class TestCheck:
                 str(custom),
             ]
         )
+        assert result == 0
+
+    @patch("mailmap_checker.cli.get_identities")
+    def test_mailmap_file_config_used_when_no_explicit_path(self, mock_get, tmp_path):
+        custom = tmp_path / "configured.mailmap"
+        custom.write_text("")
+        mock_get.return_value = {Identity("Alice", "alice@example.com")}
+        with patch(
+            "mailmap_checker.cli.get_mailmap_file_config",
+            return_value=str(custom),
+        ):
+            result = run(["check"])
+        assert result == 0
+
+    @patch("mailmap_checker.cli.get_identities")
+    def test_explicit_mailmap_overrides_config(self, mock_get, tmp_path):
+        configured = tmp_path / "configured.mailmap"
+        configured.write_text("should not be used")
+        explicit = tmp_path / "explicit.mailmap"
+        explicit.write_text("")
+        mock_get.return_value = {Identity("Alice", "alice@example.com")}
+        with patch(
+            "mailmap_checker.cli.get_mailmap_file_config",
+            return_value=str(configured),
+        ):
+            result = run(["check", "--mailmap", str(explicit)])
         assert result == 0
 
 
@@ -110,8 +139,9 @@ class TestInit:
         result = run(["init", "--mailmap", str(mailmap)])
         assert result == 1
 
+    @patch("mailmap_checker.cli.get_mailmap_file_config", return_value=None)
     @patch("mailmap_checker.cli.get_identities")
-    def test_git_dir_creates_mailmap_in_repo(self, mock_get, tmp_path):
+    def test_git_dir_creates_mailmap_in_repo(self, mock_get, _mock_cfg, tmp_path):
         repo = tmp_path / "repo"
         repo.mkdir()
         mock_get.return_value = {Identity("Alice", "alice@example.com")}
@@ -156,8 +186,9 @@ class TestFix:
         assert "Added" in output
         assert mailmap.read_text().strip() != ""
 
+    @patch("mailmap_checker.cli.get_mailmap_file_config", return_value=None)
     @patch("mailmap_checker.cli.get_identities")
-    def test_git_dir_with_fix(self, mock_get, tmp_path):
+    def test_git_dir_with_fix(self, mock_get, _mock_cfg, tmp_path):
         repo = tmp_path / "repo"
         repo.mkdir()
         mailmap = repo / ".mailmap"
