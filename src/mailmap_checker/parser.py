@@ -38,5 +38,6 @@ def _parse_line(line: str) -> MailmapEntry | None:
     if len(matches) == 1:
         canonical = Identity.parse(f"{matches[0][0].strip()} <{matches[0][1].strip()}>")
         if canonical:
-            return MailmapEntry(canonical=canonical, alias=canonical)
+            alias = Identity(name="", email=canonical.email)
+            return MailmapEntry(canonical=canonical, alias=alias)
     return None

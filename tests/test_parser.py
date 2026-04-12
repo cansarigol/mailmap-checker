@@ -27,7 +27,8 @@ class TestParseMailmap:
         mailmap.write_text("Alice Johnson <alice@acme.com>\n")
         entries = parse_mailmap(mailmap)
         assert len(entries) == 1
-        assert entries[0].canonical == entries[0].alias
+        assert entries[0].canonical == Identity("Alice Johnson", "alice@acme.com")
+        assert entries[0].alias == Identity("", "alice@acme.com")
 
     def test_skips_comments_and_blank_lines(self, tmp_path):
         mailmap = tmp_path / ".mailmap"

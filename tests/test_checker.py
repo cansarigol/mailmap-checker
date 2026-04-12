@@ -200,6 +200,46 @@ class TestFindGapsEmailOnlyAlias:
         assert gaps == []
 
 
+class TestFindGapsFormat1:
+    def test_format1_covers_all_names_with_same_email(self):
+        """Format 1: 'Proper Name <email>' covers all identities at that email."""
+        canonical = Identity("Alice Johnson", "alice@acme.com")
+        alias = Identity("", "alice@acme.com")
+        git_id1 = Identity("Alice Johnson", "alice@acme.com")
+        git_id2 = Identity("alice", "alice@acme.com")
+        git_id3 = Identity("Alice J", "alice@acme.com")
+        identities = {git_id1, git_id2, git_id3}
+        entries = [MailmapEntry(canonical=canonical, alias=alias)]
+        gaps = find_gaps(identities, entries)
+        assert gaps == []
+
+    def test_format1_does_not_cover_different_email(self):
+        """Format 1 only covers the specified email, not other emails."""
+        canonical = Identity("Alice Johnson", "alice@acme.com")
+        alias = Identity("", "alice@acme.com")
+        git_id1 = Identity("Alice Johnson", "alice@other.com")
+        git_id2 = Identity("alice", "alice@other.com")
+        identities = {git_id1, git_id2}
+        entries = [MailmapEntry(canonical=canonical, alias=alias)]
+        gaps = find_gaps(identities, entries)
+        assert len(gaps) == 1
+
+    def test_format1_combined_with_format4(self):
+        """Format 1 at one email + Format 4 alias at another email."""
+        canonical = Identity("Alice Johnson", "alice@acme.com")
+        fmt1_alias = Identity("", "alice@acme.com")
+        fmt4_alias = Identity("old alice", "alice@oldcorp.com")
+        git_id1 = Identity("A. Johnson", "alice@acme.com")
+        git_id2 = Identity("old alice", "alice@oldcorp.com")
+        identities = {git_id1, git_id2}
+        entries = [
+            MailmapEntry(canonical=canonical, alias=fmt1_alias),
+            MailmapEntry(canonical=canonical, alias=fmt4_alias),
+        ]
+        gaps = find_gaps(identities, entries)
+        assert gaps == []
+
+
 class TestFindGapsCaseInsensitive:
     def test_alias_name_case_insensitive(self):
         """Spec: names are matched case-insensitively."""
