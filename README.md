@@ -46,17 +46,21 @@ alice.j       <alice.johnson@acme.com>
 `mailmap-checker check` detects the gap:
 
 ```
-Found 2 unmapped identities in 1 group:
+  Canonical: Alice Johnson <alice.johnson@acme.com> (42 commits)
+    - Alice Johnson <alice.johnson@oldcorp.com> (15 commits)
+    - alice.j <alice.johnson@acme.com> (3 commits)
 
-  Canonical: Alice Johnson <alice.johnson@acme.com>
-    - Alice Johnson <alice.johnson@oldcorp.com>
-    - alice.j <alice.johnson@acme.com>
+Found 2 unmapped identities in 1 group (canonical chosen by name heuristic
+— prefers names that start with a letter and contain a space
+(e.g. 'Jane Doe' over 'jdoe')).
+
+Tip: Use --by-commit-count to choose canonical by highest commit count.
 ```
 
 `mailmap-checker fix --dry-run` suggests entries to add:
 
 ```
-Suggested .mailmap entries:
+Suggested .mailmap entries (canonical chosen by name heuristic):
 
   Alice Johnson <alice.johnson@acme.com> Alice Johnson <alice.johnson@oldcorp.com>
   Alice Johnson <alice.johnson@acme.com> alice.j <alice.johnson@acme.com>
@@ -115,9 +119,9 @@ mailmap-checker init
 
 ### `fix`
 
-Preview or apply suggested `.mailmap` entries. New entries are inserted in **sorted order** (not appended at the end), and canonical groups are separated by blank lines.
+Preview or apply suggested `.mailmap` entries. New entries are inserted in **sorted order** and the existing blank-line style of the file is preserved (separator-style files keep separators; compact files stay compact).
 
-The canonical identity for each group is chosen by preferring names that look like real person names (e.g. `Alice Johnson`) over usernames (`alicej`), git config artifacts (`--global`), or handle-style names (`@username`).
+The canonical identity for each group is chosen by a **name heuristic** — preferring names that look like real person names (e.g. `Alice Johnson`) over usernames (`alicej`), git config artifacts (`--global`), or handle-style names (`@username`). Use `--by-commit-count` to choose the identity with the most commits instead.
 
 ```bash
 # Preview
@@ -125,6 +129,9 @@ mailmap-checker fix --dry-run
 
 # Apply
 mailmap-checker fix
+
+# Choose canonical by commit count
+mailmap-checker fix --by-commit-count
 ```
 
 ### Common options
@@ -134,6 +141,7 @@ mailmap-checker fix
 | `--mailmap <path>` | Custom `.mailmap` file path (default: `git config mailmap.file`, then `.mailmap`) |
 | `--git-dir <path>` | Path to git repository (default: current directory) |
 | `--no-local-part-matching` | Disable grouping by email local-part across domains |
+| `--by-commit-count` | Choose canonical identity by highest commit count instead of name heuristic |
 
 ## Contributing
 

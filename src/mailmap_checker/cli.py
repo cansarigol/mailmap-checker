@@ -4,7 +4,8 @@ from pathlib import Path
 
 from .checker import find_gaps
 from .fixer import apply_fixes, generate_entries
-from .git import get_identities, get_mailmap_file_config
+from .git import get_identity_counts, get_mailmap_file_config
+from .models import Identity
 from .parser import parse_mailmap
 
 _DEFAULT_MAILMAP = ".mailmap"
@@ -38,16 +39,18 @@ def _resolve_paths(args: argparse.Namespace) -> tuple[Path, Path | None]:
 def _handle_check(args: argparse.Namespace) -> int:
     mailmap_path, git_dir = _resolve_paths(args)
     entries = parse_mailmap(mailmap_path)
-    identities = get_identities(git_dir)
+    counts = get_identity_counts(git_dir)
+    identities = set(counts)
     gaps = find_gaps(
         identities,
         entries,
         local_part_matching=not args.no_local_part_matching,
+        identity_counts=counts if args.by_commit_count else None,
     )
     if not gaps:
         sys.stdout.write("All identities are properly mapped.\n")
         return 0
-    _print_gaps(gaps)
+    _print_gaps(gaps, counts, by_commit_count=args.by_commit_count)
     return 1
 
 
@@ -64,35 +67,64 @@ def _handle_init(args: argparse.Namespace) -> int:
 def _handle_fix(args: argparse.Namespace) -> int:
     mailmap_path, git_dir = _resolve_paths(args)
     entries = parse_mailmap(mailmap_path)
-    identities = get_identities(git_dir)
+    counts = get_identity_counts(git_dir)
+    identities = set(counts)
     gaps = find_gaps(
         identities,
         entries,
         local_part_matching=not args.no_local_part_matching,
+        identity_counts=counts if args.by_commit_count else None,
     )
     if not gaps:
         sys.stdout.write("No fixes needed.\n")
         return 0
     new_entries = generate_entries(gaps)
     if args.dry_run:
-        sys.stdout.write("Suggested .mailmap entries:\n\n")
+        strategy = "highest commit count" if args.by_commit_count else "name heuristic"
+        sys.stdout.write(
+            f"Suggested .mailmap entries (canonical chosen by {strategy}):\n\n"
+        )
         for entry in new_entries:
             sys.stdout.write(f"  {entry}\n")
+        if not args.by_commit_count:
+            sys.stdout.write(
+                "\nTip: Use --by-commit-count to choose canonical"
+                " by highest commit count.\n"
+            )
         return 1
     apply_fixes(mailmap_path, new_entries)
     sys.stdout.write(f"Added {len(new_entries)} entries to '{mailmap_path}'.\n")
     return 0
 
 
-def _print_gaps(gaps: list) -> None:
+def _print_gaps(
+    gaps: list,
+    counts: dict[Identity, int],
+    *,
+    by_commit_count: bool = False,
+) -> None:
     total_missing = sum(len(g.missing_entries) for g in gaps)
-    sys.stdout.write(
-        f"Found {total_missing} unmapped identities in {len(gaps)} groups:\n\n"
+    strategy = (
+        "highest commit count"
+        if by_commit_count
+        else "name heuristic — prefers names that start with a letter"
+        " and contain a space (e.g. 'Jane Doe' over 'jdoe')"
     )
     for group in gaps:
-        sys.stdout.write(f"  Canonical: {group.canonical}\n")
+        canon_count = counts.get(group.canonical, 0)
+        sys.stdout.write(f"  Canonical: {group.canonical} ({canon_count} commits)\n")
         for identity in group.missing_entries:
-            sys.stdout.write(f"    - {identity}\n")
+            id_count = counts.get(identity, 0)
+            sys.stdout.write(f"    - {identity} ({id_count} commits)\n")
+    sys.stdout.write(
+        f"\nFound {total_missing} unmapped identities in {len(gaps)} groups"
+        f" (canonical chosen by {strategy}).\n"
+    )
+    if not by_commit_count:
+        sys.stdout.write(
+            "\nTip: Use --by-commit-count to choose canonical"
+            " by highest commit count.\n"
+        )
     sys.stdout.write(
         "\nRun 'mailmap-checker fix --dry-run' to see suggested entries,\n"
         "or use the 'mailmap-fix-dry-run' pre-commit hook.\n"
@@ -113,6 +145,12 @@ def _add_common_args(parser: argparse.ArgumentParser) -> None:
         action="store_true",
         default=False,
         help="Disable grouping by email local-part across domains",
+    )
+    parser.add_argument(
+        "--by-commit-count",
+        action="store_true",
+        default=False,
+        help="Choose canonical identity by highest commit count",
     )
 
 

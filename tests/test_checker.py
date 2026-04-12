@@ -253,3 +253,45 @@ class TestFindGapsEdgeCases:
         gaps = find_gaps(identities, entries)
         assert len(gaps) == 1
         assert len(gaps[0].missing_entries) == 2
+
+
+class TestFindGapsByCommitCount:
+    def test_most_commits_chosen_as_canonical(self):
+        id_few = Identity("Few Commits", "shared@example.com")
+        id_many = Identity("Many Commits", "shared@example.com")
+        identities = {id_few, id_many}
+        counts = {id_few: 5, id_many: 100}
+        gaps = find_gaps(identities, [], identity_counts=counts)
+        assert len(gaps) == 1
+        assert gaps[0].canonical == id_many
+
+    def test_heuristic_used_as_tiebreaker(self):
+        """When counts are equal, heuristic decides."""
+        id_user = Identity("jdoe", "shared@example.com")
+        id_real = Identity("Jane Doe", "shared@example.com")
+        identities = {id_user, id_real}
+        counts = {id_user: 10, id_real: 10}
+        gaps = find_gaps(identities, [], identity_counts=counts)
+        assert len(gaps) == 1
+        assert gaps[0].canonical == id_real
+
+    def test_mailmap_canonical_takes_precedence(self):
+        """Existing mailmap canonical wins over commit count."""
+        canonical = Identity("Jane Doe", "jane@acme.com")
+        alias = Identity("jdoe", "jane@acme.com")
+        other = Identity("Jane D", "jane@acme.com")
+        identities = {canonical, alias, other}
+        entries = [MailmapEntry(canonical=canonical, alias=alias)]
+        counts = {canonical: 1, alias: 500, other: 200}
+        gaps = find_gaps(identities, entries, identity_counts=counts)
+        assert len(gaps) == 1
+        assert gaps[0].canonical == canonical
+
+    def test_without_counts_uses_heuristic(self):
+        """Default behavior unchanged when no counts provided."""
+        id_user = Identity("jdoe", "shared@example.com")
+        id_real = Identity("Jane Doe", "shared@example.com")
+        identities = {id_user, id_real}
+        gaps = find_gaps(identities, [])
+        assert len(gaps) == 1
+        assert gaps[0].canonical == id_real

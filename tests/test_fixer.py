@@ -109,8 +109,7 @@ class TestApplyFixesSorted:
         )
         lines = mailmap.read_text().splitlines()
         assert lines[0] == "Alice <alice@acme.com> A1 <a1@x.com>"
-        assert lines[1] == ""
-        assert lines[2] == "Bob <bob@acme.com> OldBob <old-bob@x.com>"
+        assert lines[1] == "Bob <bob@acme.com> OldBob <old-bob@x.com>"
 
     def test_inserts_in_sorted_position_between_entries(self, tmp_path):
         mailmap = tmp_path / ".mailmap"
@@ -139,8 +138,7 @@ class TestApplyFixesSorted:
         )
         lines = mailmap.read_text().splitlines()
         assert lines[0] == "Alice <alice@acme.com> A1 <a1@x.com>"
-        assert lines[1] == ""
-        assert lines[2] == "Bob <bob@acme.com> B1 <b1@x.com>"
+        assert lines[1] == "Bob <bob@acme.com> B1 <b1@x.com>"
 
     def test_creates_new_file(self, tmp_path):
         mailmap = tmp_path / ".mailmap"
@@ -170,7 +168,7 @@ class TestApplyFixesSorted:
         )
         assert mailmap.read_text() == "Alice <alice@acme.com> old <old@x.com>\n"
 
-    def test_multiple_groups_with_blank_separator(self, tmp_path):
+    def test_multiple_groups_no_separator(self, tmp_path):
         mailmap = tmp_path / ".mailmap"
         mailmap.write_text("Alice <alice@acme.com> A1 <a1@x.com>\n")
         apply_fixes(
@@ -183,11 +181,62 @@ class TestApplyFixesSorted:
         )
         lines = mailmap.read_text().splitlines()
         assert lines[0] == "Alice <alice@acme.com> A1 <a1@x.com>"
+        assert lines[1] == "Bob <bob@acme.com> OldBob <old@x.com>"
+        assert lines[2] == "Bob <bob@acme.com> OldBob2 <old2@x.com>"
+        assert lines[3] == "Charlie <charlie@acme.com> OldCharlie <old@x.com>"
+
+    def test_preserves_existing_blank_lines(self, tmp_path):
+        """When file uses blank-line separators, new entries get them too."""
+        mailmap = tmp_path / ".mailmap"
+        mailmap.write_text(
+            "Alice <alice@acme.com> A1 <a1@x.com>\n"
+            "\n"
+            "Charlie <charlie@acme.com> C1 <c1@x.com>\n"
+        )
+        apply_fixes(
+            mailmap,
+            ["Dave <dave@acme.com> D1 <d1@x.com>"],
+        )
+        lines = mailmap.read_text().splitlines()
+        assert lines[0] == "Alice <alice@acme.com> A1 <a1@x.com>"
         assert lines[1] == ""
-        assert lines[2] == "Bob <bob@acme.com> OldBob <old@x.com>"
-        assert lines[3] == "Bob <bob@acme.com> OldBob2 <old2@x.com>"
-        assert lines[4] == ""
-        assert lines[5] == "Charlie <charlie@acme.com> OldCharlie <old@x.com>"
+        assert lines[2] == "Charlie <charlie@acme.com> C1 <c1@x.com>"
+        assert lines[3] == ""
+        assert lines[4] == "Dave <dave@acme.com> D1 <d1@x.com>"
+
+    def test_separator_file_adds_blank_before_appended(self, tmp_path):
+        """Appending to a separator-style file adds blank line before new entries."""
+        mailmap = tmp_path / ".mailmap"
+        mailmap.write_text(
+            "Alice <alice@acme.com> A1 <a1@x.com>\n\nBob <bob@acme.com> B1 <b1@x.com>\n"
+        )
+        apply_fixes(
+            mailmap,
+            ["Charlie <charlie@acme.com> C1 <c1@x.com>"],
+        )
+        lines = mailmap.read_text().splitlines()
+        assert lines[0] == "Alice <alice@acme.com> A1 <a1@x.com>"
+        assert lines[1] == ""
+        assert lines[2] == "Bob <bob@acme.com> B1 <b1@x.com>"
+        assert lines[3] == ""
+        assert lines[4] == "Charlie <charlie@acme.com> C1 <c1@x.com>"
+
+    def test_compact_file_stays_compact(self, tmp_path):
+        """When file has no blank-line separators, new entries don't add them."""
+        mailmap = tmp_path / ".mailmap"
+        mailmap.write_text(
+            "Alice <alice@acme.com> A1 <a1@x.com>\n"
+            "Charlie <charlie@acme.com> C1 <c1@x.com>\n"
+        )
+        apply_fixes(
+            mailmap,
+            ["Dave <dave@acme.com> D1 <d1@x.com>"],
+        )
+        lines = mailmap.read_text().splitlines()
+        assert lines[0] == "Alice <alice@acme.com> A1 <a1@x.com>"
+        assert lines[1] == "Charlie <charlie@acme.com> C1 <c1@x.com>"
+        assert lines[2] == "Dave <dave@acme.com> D1 <d1@x.com>"
+        assert len(lines) == 3
 
     def test_sorted_at_different_positions(self, tmp_path):
         mailmap = tmp_path / ".mailmap"
@@ -201,10 +250,8 @@ class TestApplyFixesSorted:
         )
         lines = mailmap.read_text().splitlines()
         assert lines[0] == "Alice <alice@acme.com> A1 <a1@x.com>"
-        assert lines[1] == ""
-        assert lines[2] == "Bob <bob@acme.com> B1 <b1@x.com>"
-        assert lines[3] == ""
-        assert lines[4] == "Charlie <charlie@acme.com> C1 <c1@x.com>"
+        assert lines[1] == "Bob <bob@acme.com> B1 <b1@x.com>"
+        assert lines[2] == "Charlie <charlie@acme.com> C1 <c1@x.com>"
 
 
 class TestApplyFixesMixed:
@@ -221,5 +268,4 @@ class TestApplyFixesMixed:
         lines = mailmap.read_text().splitlines()
         assert lines[0] == "Alice <alice@acme.com> A1 <a1@x.com>"
         assert lines[1] == "Alice <alice@acme.com> A2 <a2@x.com>"
-        assert lines[2] == ""
-        assert lines[3] == "Bob <bob@acme.com> B1 <b1@x.com>"
+        assert lines[2] == "Bob <bob@acme.com> B1 <b1@x.com>"

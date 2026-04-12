@@ -15,11 +15,12 @@ def find_gaps(
     entries: list[MailmapEntry],
     *,
     local_part_matching: bool = True,
+    identity_counts: dict[Identity, int] | None = None,
 ) -> list[IdentityGroup]:
     groups = _build_identity_groups(
         identities, entries, local_part_matching=local_part_matching
     )
-    return _detect_missing_entries(groups, identities, entries)
+    return _detect_missing_entries(groups, identities, entries, identity_counts)
 
 
 def _build_identity_groups(
@@ -47,6 +48,7 @@ def _detect_missing_entries(
     groups: dict[Identity, set[Identity]],
     git_identities: set[Identity],
     entries: list[MailmapEntry],
+    identity_counts: dict[Identity, int] | None = None,
 ) -> list[IdentityGroup]:
     # Email-only aliases (empty name in alias) match any name with that email
     email_only_aliases = {e.alias.normalized_email for e in entries if not e.alias.name}
@@ -73,7 +75,9 @@ def _detect_missing_entries(
         )
         if len(git_members) <= 1:
             continue
-        canonical = _determine_canonical(git_members, members_set, entries)
+        canonical = _determine_canonical(
+            git_members, members_set, entries, identity_counts
+        )
         missing = [m for m in git_members if m != canonical and not is_covered(m)]
         if missing:
             gaps.append(
@@ -90,6 +94,7 @@ def _determine_canonical(
     git_members: list[Identity],
     all_members: set[Identity],
     entries: list[MailmapEntry],
+    identity_counts: dict[Identity, int] | None = None,
 ) -> Identity:
     # Email-only canonicals (empty name) match any identity with that email
     canonical_email_only = {
@@ -116,6 +121,11 @@ def _determine_canonical(
     for member in all_members:
         if matches_canonical(member):
             return member
+    if identity_counts:
+        return sorted(
+            git_members,
+            key=lambda i: (-identity_counts.get(i, 0), *_canonical_sort_key(i)),
+        )[0]
     return sorted(git_members, key=_canonical_sort_key)[0]
 
 

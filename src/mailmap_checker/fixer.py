@@ -74,6 +74,23 @@ def _insert_matched(
             lines.insert(idx + i, entry + "\n")
 
 
+def _has_group_separators(lines: list[str]) -> bool:
+    saw_content = False
+    saw_blank_after_content = False
+    for line in lines:
+        stripped = line.strip()
+        if not stripped:
+            if saw_content:
+                saw_blank_after_content = True
+            continue
+        if stripped.startswith("#"):
+            continue
+        if saw_blank_after_content:
+            return True
+        saw_content = True
+    return False
+
+
 def _find_sorted_position(lines: list[str], canonical_prefix: str) -> int:
     prefix_lower = canonical_prefix.strip().lower()
     for i, line in enumerate(lines):
@@ -93,21 +110,19 @@ def _insert_sorted(
         return
     if lines and not lines[-1].endswith("\n"):
         lines[-1] += "\n"
+    use_separators = _has_group_separators(lines)
     sorted_groups = sorted(groups, key=lambda g: g[0].lower())
     by_pos: dict[int, list[list[str]]] = {}
     for canonical_prefix, entries in sorted_groups:
         pos = _find_sorted_position(lines, canonical_prefix)
         by_pos.setdefault(pos, []).append(entries)
     for pos in sorted(by_pos, reverse=True):
-        entry_groups = by_pos[pos]
         block: list[str] = []
-        if pos > 0 and lines[pos - 1].strip():
-            block.append("\n")
-        for i, entries in enumerate(entry_groups):
-            if i > 0:
-                block.append("\n")
+        for entries in by_pos[pos]:
             block.extend(entry + "\n" for entry in entries)
-        if pos < len(lines) and lines[pos].strip():
+        if pos > 0 and pos < len(lines) and not lines[pos - 1].strip():
             block.append("\n")
+        elif use_separators and pos == len(lines) and pos > 0:
+            block.insert(0, "\n")
         for i, line in enumerate(block):
             lines.insert(pos + i, line)

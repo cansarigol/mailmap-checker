@@ -4,18 +4,25 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/), and this project adheres to [Semantic Versioning](https://semver.org/).
 
-## [0.3.1] - 2026-04-10
+## [0.3.3] - 2026-04-12
+
+### Added
+
+- `--by-commit-count` flag: choose canonical identity by highest commit count instead of name heuristic.
+- Commit counts are now shown next to each identity in check and fix output.
+- Strategy description in output explains how the canonical identity was chosen, with a tip to try `--by-commit-count`.
 
 ### Fixed
 
 - Local-part matching now requires the name to match as well, preventing false positives where different people share a common local-part (e.g. `jonathan@`).
+- Fixer now respects the existing `.mailmap` blank-line style: files that use blank-line separators between groups keep that format; compact files stay compact.
 
 ## [0.3.0] - 2026-04-10
 
 ### Added
 
 - Sorted insertion: new `.mailmap` entries are now inserted in alphabetical order instead of appended at the end, keeping the file sorted.
-- Blank line separators between canonical groups in generated `.mailmap` entries.
+- Blank line separators between canonical groups when the existing `.mailmap` uses that style.
 - Smarter canonical selection: prefers real names (e.g. `Alice Johnson`) over git config artifacts (`--global`), usernames (`alicej`), or handle-style names (`@username`).
 
 ## [0.2.1] - 2026-04-10
@@ -60,6 +67,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/), and this
 - Identity grouping via Union-Find: same email (case-insensitive) and same email local-part across domains.
 - Pre-commit hook integration (`mailmap-check`).
 
+[0.3.3]: https://github.com/cansarigol/mailmap-checker/compare/v0.3.2...v0.3.3
 [0.3.1]: https://github.com/cansarigol/mailmap-checker/compare/v0.3.0...v0.3.1
 [0.3.0]: https://github.com/cansarigol/mailmap-checker/compare/v0.2.1...v0.3.0
 [0.2.1]: https://github.com/cansarigol/mailmap-checker/compare/v0.2.0...v0.2.1

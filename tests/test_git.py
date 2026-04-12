@@ -1,7 +1,11 @@
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
-from mailmap_checker.git import get_identities, get_mailmap_file_config
+from mailmap_checker.git import (
+    get_identities,
+    get_identity_counts,
+    get_mailmap_file_config,
+)
 from mailmap_checker.models import Identity
 
 
@@ -96,6 +100,39 @@ class TestGetIdentities:
             "log",
             "--format=%an <%ae>%n%cn <%ce>",
         ]
+
+
+class TestGetIdentityCounts:
+    @patch("subprocess.run")
+    def test_counts_occurrences(self, mock_run):
+        mock_run.return_value = MagicMock(
+            stdout=(
+                "Alice <alice@acme.com>\nBob <bob@acme.com>\n"
+                "Alice <alice@acme.com>\nBob <bob@acme.com>\n"
+                "Alice <alice@acme.com>\nBob <bob@acme.com>\n"
+            )
+        )
+        counts = get_identity_counts()
+        assert counts[Identity("Alice", "alice@acme.com")] == 3
+        assert counts[Identity("Bob", "bob@acme.com")] == 3
+
+    @patch("subprocess.run")
+    def test_different_counts(self, mock_run):
+        mock_run.return_value = MagicMock(
+            stdout=(
+                "Alice <alice@acme.com>\nAlice <alice@acme.com>\n\n"
+                "Alice <alice@acme.com>\nAlice <alice@acme.com>\n"
+                "Bob <bob@acme.com>\n"
+            )
+        )
+        counts = get_identity_counts()
+        assert counts[Identity("Alice", "alice@acme.com")] == 4
+        assert counts[Identity("Bob", "bob@acme.com")] == 1
+
+    @patch("subprocess.run")
+    def test_empty_output(self, mock_run):
+        mock_run.return_value = MagicMock(stdout="")
+        assert get_identity_counts() == {}
 
 
 class TestGetMailmapFileConfig:
