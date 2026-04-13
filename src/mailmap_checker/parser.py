@@ -27,6 +27,20 @@ def parse_mailmap(path: Path) -> list[MailmapEntry]:
     return entries
 
 
+def parse_mailmap_text(text: str) -> list[MailmapEntry]:
+    entries = []
+    for line in text.splitlines():
+        stripped = line.strip()
+        if not stripped or stripped.startswith("#"):
+            continue
+        if len(stripped) > _MAX_LINE_LENGTH:
+            continue
+        entry = _parse_line(stripped)
+        if entry:
+            entries.append(entry)
+    return entries
+
+
 def _parse_line(line: str) -> MailmapEntry | None:
     matches = _IDENTITY_RE.findall(line)
     if len(matches) == 2:

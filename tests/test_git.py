@@ -4,7 +4,9 @@ from unittest.mock import MagicMock, patch
 from mailmap_checker.git import (
     get_identities,
     get_identity_counts,
+    get_mailmap_blob_config,
     get_mailmap_file_config,
+    read_mailmap_blob,
 )
 from mailmap_checker.models import Identity
 
@@ -164,3 +166,71 @@ class TestGetMailmapFileConfig:
         get_mailmap_file_config()
         cmd = mock_run.call_args[0][0]
         assert cmd == ["git", "config", "mailmap.file"]
+
+
+class TestGetMailmapBlobConfig:
+    @patch("subprocess.run")
+    def test_returns_configured_ref(self, mock_run):
+        mock_run.return_value = MagicMock(returncode=0, stdout="HEAD:.mailmap\n")
+        assert get_mailmap_blob_config() == "HEAD:.mailmap"
+
+    @patch("subprocess.run")
+    def test_returns_none_when_not_configured(self, mock_run):
+        mock_run.return_value = MagicMock(returncode=1, stdout="")
+        assert get_mailmap_blob_config() is None
+
+    @patch("subprocess.run")
+    def test_returns_none_for_empty_value(self, mock_run):
+        mock_run.return_value = MagicMock(returncode=0, stdout="  \n")
+        assert get_mailmap_blob_config() is None
+
+    @patch("subprocess.run")
+    def test_with_git_dir(self, mock_run):
+        mock_run.return_value = MagicMock(returncode=0, stdout="HEAD:.mailmap\n")
+        get_mailmap_blob_config(Path("/repo"))
+        cmd = mock_run.call_args[0][0]
+        assert cmd == ["git", "-C", str(Path("/repo")), "config", "mailmap.blob"]
+
+    @patch("subprocess.run")
+    def test_without_git_dir(self, mock_run):
+        mock_run.return_value = MagicMock(returncode=1, stdout="")
+        get_mailmap_blob_config()
+        cmd = mock_run.call_args[0][0]
+        assert cmd == ["git", "config", "mailmap.blob"]
+
+
+class TestReadMailmapBlob:
+    @patch("subprocess.run")
+    def test_returns_blob_content(self, mock_run):
+        mock_run.return_value = MagicMock(
+            returncode=0,
+            stdout="Alice <alice@x.com> Bob <bob@x.com>\n",
+        )
+        result = read_mailmap_blob(None, "HEAD:.mailmap")
+        assert result == "Alice <alice@x.com> Bob <bob@x.com>\n"
+
+    @patch("subprocess.run")
+    def test_returns_none_on_failure(self, mock_run):
+        mock_run.return_value = MagicMock(returncode=128, stdout="")
+        assert read_mailmap_blob(None, "HEAD:.mailmap") is None
+
+    @patch("subprocess.run")
+    def test_with_git_dir(self, mock_run):
+        mock_run.return_value = MagicMock(returncode=0, stdout="content\n")
+        read_mailmap_blob(Path("/repo"), "HEAD:.mailmap")
+        cmd = mock_run.call_args[0][0]
+        assert cmd == [
+            "git",
+            "-C",
+            str(Path("/repo")),
+            "cat-file",
+            "blob",
+            "HEAD:.mailmap",
+        ]
+
+    @patch("subprocess.run")
+    def test_without_git_dir(self, mock_run):
+        mock_run.return_value = MagicMock(returncode=0, stdout="content\n")
+        read_mailmap_blob(None, "HEAD:.mailmap")
+        cmd = mock_run.call_args[0][0]
+        assert cmd == ["git", "cat-file", "blob", "HEAD:.mailmap"]

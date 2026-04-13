@@ -4,9 +4,15 @@ from pathlib import Path
 
 from .checker import find_gaps
 from .fixer import apply_fixes, generate_entries
-from .git import get_identity_counts, get_mailmap_file_config
-from .models import Identity
-from .parser import parse_mailmap
+from .git import (
+    get_identity_counts,
+    get_mailmap_blob_config,
+    get_mailmap_file_config,
+    read_mailmap_blob,
+)
+from .models import Identity, MailmapEntry
+from .normalizer import NormalizeStats, normalize_file
+from .parser import parse_mailmap, parse_mailmap_text
 
 _DEFAULT_MAILMAP = ".mailmap"
 _MAILMAP_HEADER = "# Canonical identity → historical aliases\n"
@@ -36,9 +42,22 @@ def _resolve_paths(args: argparse.Namespace) -> tuple[Path, Path | None]:
     return Path(_DEFAULT_MAILMAP), git_dir
 
 
+def _collect_entries(mailmap_path: Path, git_dir: Path | None) -> list[MailmapEntry]:
+    entries = parse_mailmap(mailmap_path)
+    root_mailmap = (git_dir or Path(".")) / _DEFAULT_MAILMAP
+    if root_mailmap.resolve() != mailmap_path.resolve() and root_mailmap.exists():
+        entries.extend(parse_mailmap(root_mailmap))
+    blob_ref = get_mailmap_blob_config(git_dir)
+    if blob_ref:
+        blob_text = read_mailmap_blob(git_dir, blob_ref)
+        if blob_text:
+            entries.extend(parse_mailmap_text(blob_text))
+    return entries
+
+
 def _handle_check(args: argparse.Namespace) -> int:
     mailmap_path, git_dir = _resolve_paths(args)
-    entries = parse_mailmap(mailmap_path)
+    entries = _collect_entries(mailmap_path, git_dir)
     counts = get_identity_counts(git_dir)
     identities = set(counts)
     gaps = find_gaps(
@@ -66,7 +85,7 @@ def _handle_init(args: argparse.Namespace) -> int:
 
 def _handle_fix(args: argparse.Namespace) -> int:
     mailmap_path, git_dir = _resolve_paths(args)
-    entries = parse_mailmap(mailmap_path)
+    entries = _collect_entries(mailmap_path, git_dir)
     counts = get_identity_counts(git_dir)
     identities = set(counts)
     gaps = find_gaps(
@@ -95,6 +114,46 @@ def _handle_fix(args: argparse.Namespace) -> int:
     apply_fixes(mailmap_path, new_entries)
     sys.stdout.write(f"Added {len(new_entries)} entries to '{mailmap_path}'.\n")
     return 0
+
+
+def _handle_normalize(args: argparse.Namespace) -> int:
+    mailmap_path, _ = _resolve_paths(args)
+    if not mailmap_path.exists():
+        sys.stdout.write(f"'{mailmap_path}' does not exist.\n")
+        return 1
+    new_content, changed, stats = normalize_file(mailmap_path, dry_run=args.dry_run)
+    if not changed:
+        sys.stdout.write("Already normalized.\n")
+        return 0
+    if args.dry_run:
+        sys.stdout.write("Normalized content:\n\n")
+        sys.stdout.write(new_content)
+        sys.stdout.write("\n")
+    else:
+        sys.stdout.write(f"Normalized '{mailmap_path}'.\n")
+    _print_normalize_stats(stats)
+    return 1 if args.dry_run else 0
+
+
+def _print_normalize_stats(stats: NormalizeStats) -> None:
+    parts: list[str] = []
+    if stats.format1_collapses:
+        parts.append(
+            f"{stats.format1_collapses} same-email"
+            f" {'alias' if stats.format1_collapses == 1 else 'aliases'}"
+            " collapsed to Format 1"
+        )
+    if stats.duplicates_removed:
+        parts.append(
+            f"{stats.duplicates_removed}"
+            f" {'duplicate' if stats.duplicates_removed == 1 else 'duplicates'}"
+            " removed"
+        )
+    if parts:
+        sys.stdout.write(f"  {', '.join(parts)}.\n")
+    sys.stdout.write(
+        f"  {stats.original_entries} → {stats.normalized_entries} entries.\n"
+    )
 
 
 def _print_gaps(
@@ -182,5 +241,24 @@ def _parse_args(argv: list[str] | None) -> argparse.Namespace:
         help="Show suggested entries without applying",
     )
     fix_parser.set_defaults(handler=_handle_fix)
+
+    normalize_parser = subparsers.add_parser(
+        "normalize",
+        help="Deduplicate, collapse to Format 1, and sort .mailmap entries",
+    )
+    normalize_parser.add_argument(
+        "--mailmap", default=_DEFAULT_MAILMAP, help="Path to .mailmap file"
+    )
+    normalize_parser.add_argument(
+        "--git-dir",
+        default=None,
+        help="Path to git repository (default: current directory)",
+    )
+    normalize_parser.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="Show normalized content without applying",
+    )
+    normalize_parser.set_defaults(handler=_handle_normalize)
 
     return parser.parse_args(argv)

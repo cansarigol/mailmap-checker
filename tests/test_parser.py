@@ -1,7 +1,12 @@
 import pytest
 
 from mailmap_checker.models import Identity
-from mailmap_checker.parser import _MAX_FILE_SIZE, _MAX_LINE_LENGTH, parse_mailmap
+from mailmap_checker.parser import (
+    _MAX_FILE_SIZE,
+    _MAX_LINE_LENGTH,
+    parse_mailmap,
+    parse_mailmap_text,
+)
 
 
 class TestParseMailmap:
@@ -85,5 +90,29 @@ class TestParseMailmap:
             "Alice <alice@x.com> Bob <bob@x.com>\n"
         )
         entries = parse_mailmap(mailmap)
+        assert len(entries) == 1
+        assert entries[0].canonical.name == "Alice"
+
+
+class TestParseMailmapText:
+    def test_parses_entries(self):
+        text = "Alice <alice@x.com> Bob <bob@x.com>\nCarol <carol@x.com>\n"
+        entries = parse_mailmap_text(text)
+        assert len(entries) == 2
+        assert entries[0].canonical == Identity("Alice", "alice@x.com")
+        assert entries[1].canonical == Identity("Carol", "carol@x.com")
+
+    def test_skips_comments_and_blanks(self):
+        text = "# comment\n\nAlice <alice@x.com> Bob <bob@x.com>\n  \n"
+        entries = parse_mailmap_text(text)
+        assert len(entries) == 1
+
+    def test_empty_text(self):
+        assert parse_mailmap_text("") == []
+
+    def test_skips_oversized_lines(self):
+        long_name = "A" * _MAX_LINE_LENGTH
+        text = f"{long_name} <long@x.com> Old <old@x.com>\nAlice <a@x.com>\n"
+        entries = parse_mailmap_text(text)
         assert len(entries) == 1
         assert entries[0].canonical.name == "Alice"

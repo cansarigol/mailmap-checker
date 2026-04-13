@@ -41,6 +41,34 @@ def get_mailmap_file_config(git_dir: Path | None = None) -> str | None:
     return None
 
 
+def get_mailmap_blob_config(git_dir: Path | None = None) -> str | None:
+    cmd = ["git"]
+    if git_dir:
+        cmd.extend(["-C", str(git_dir)])
+    cmd.extend(["config", "mailmap.blob"])
+    # Arguments are fully hardcoded; no user input reaches this call.
+    result = subprocess.run(  # nosec B603 # noqa: S603
+        cmd, capture_output=True, text=True
+    )
+    if result.returncode == 0 and result.stdout.strip():
+        return result.stdout.strip()
+    return None
+
+
+def read_mailmap_blob(git_dir: Path | None, ref: str) -> str | None:
+    cmd = ["git"]
+    if git_dir:
+        cmd.extend(["-C", str(git_dir)])
+    cmd.extend(["cat-file", "blob", ref])
+    # Arguments are fully hardcoded; no user input reaches this call.
+    result = subprocess.run(  # nosec B603 # noqa: S603
+        cmd, capture_output=True, text=True
+    )
+    if result.returncode == 0:
+        return result.stdout
+    return None
+
+
 def _parse_identities(output: str) -> set[Identity]:
     identities: set[Identity] = set()
     for line in set(output.splitlines()):

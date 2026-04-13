@@ -1,6 +1,6 @@
 [project]
 name = "mailmap-checker"
-version = "0.3.4"
+version = "0.3.5"
 description = "Pre-commit hook that checks and maintains .mailmap completeness"
 readme = "README.md"
 license = "MIT"

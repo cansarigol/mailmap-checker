@@ -74,7 +74,7 @@ def _insert_matched(
             lines.insert(idx + i, entry + "\n")
 
 
-def _has_group_separators(lines: list[str]) -> bool:
+def has_group_separators(lines: list[str]) -> bool:
     saw_content = False
     saw_blank_after_content = False
     for line in lines:
@@ -110,7 +110,7 @@ def _insert_sorted(
         return
     if lines and not lines[-1].endswith("\n"):
         lines[-1] += "\n"
-    use_separators = _has_group_separators(lines)
+    use_separators = has_group_separators(lines)
     sorted_groups = sorted(groups, key=lambda g: g[0].lower())
     by_pos: dict[int, list[list[str]]] = {}
     for canonical_prefix, entries in sorted_groups:

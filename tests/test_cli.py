@@ -2,8 +2,57 @@ from unittest.mock import patch
 
 import pytest
 
-from mailmap_checker.cli import main, run
+from mailmap_checker.cli import _collect_entries, main, run
 from mailmap_checker.models import Identity
+
+
+class TestCollectEntries:
+    def test_reads_from_mailmap_file(self, tmp_path):
+        mailmap = tmp_path / ".mailmap"
+        mailmap.write_text("Alice <alice@x.com> Bob <bob@x.com>\n")
+        entries = _collect_entries(mailmap, None)
+        assert len(entries) == 1
+        assert entries[0].canonical == Identity("Alice", "alice@x.com")
+
+    def test_merges_root_mailmap(self, tmp_path):
+        custom = tmp_path / "custom.mailmap"
+        custom.write_text("Alice <alice@x.com> Bob <bob@x.com>\n")
+        root = tmp_path / ".mailmap"
+        root.write_text("Carol <carol@x.com> Dave <dave@x.com>\n")
+        entries = _collect_entries(custom, tmp_path)
+        assert len(entries) == 2
+
+    def test_does_not_duplicate_when_same_path(self, tmp_path):
+        mailmap = tmp_path / ".mailmap"
+        mailmap.write_text("Alice <alice@x.com> Bob <bob@x.com>\n")
+        entries = _collect_entries(mailmap, tmp_path)
+        assert len(entries) == 1
+
+    @patch("mailmap_checker.cli.get_mailmap_blob_config", return_value="HEAD:.mailmap")
+    @patch(
+        "mailmap_checker.cli.read_mailmap_blob",
+        return_value="Carol <carol@x.com> Dave <dave@x.com>\n",
+    )
+    def test_merges_blob(self, _mock_blob, _mock_cfg, tmp_path):
+        mailmap = tmp_path / ".mailmap"
+        mailmap.write_text("Alice <alice@x.com> Bob <bob@x.com>\n")
+        entries = _collect_entries(mailmap, tmp_path)
+        assert len(entries) == 2
+
+    @patch("mailmap_checker.cli.get_mailmap_blob_config", return_value=None)
+    def test_no_blob_config(self, _mock_cfg, tmp_path):
+        mailmap = tmp_path / ".mailmap"
+        mailmap.write_text("Alice <alice@x.com> Bob <bob@x.com>\n")
+        entries = _collect_entries(mailmap, tmp_path)
+        assert len(entries) == 1
+
+    @patch("mailmap_checker.cli.get_mailmap_blob_config", return_value="HEAD:.mailmap")
+    @patch("mailmap_checker.cli.read_mailmap_blob", return_value=None)
+    def test_blob_read_failure(self, _mock_blob, _mock_cfg, tmp_path):
+        mailmap = tmp_path / ".mailmap"
+        mailmap.write_text("Alice <alice@x.com> Bob <bob@x.com>\n")
+        entries = _collect_entries(mailmap, tmp_path)
+        assert len(entries) == 1
 
 
 class TestMain:
@@ -236,3 +285,77 @@ class TestFix:
         result = run(["fix", "--git-dir", str(repo)])
         assert result == 0
         assert mailmap.read_text().strip() != ""
+
+
+class TestNormalize:
+    def test_already_normalized(self, tmp_path, capsys):
+        mailmap = tmp_path / ".mailmap"
+        mailmap.write_text("Alice <alice@acme.com>\n")
+        result = run(["normalize", "--mailmap", str(mailmap)])
+        assert result == 0
+        assert "Already normalized" in capsys.readouterr().out
+
+    def test_applies_changes(self, tmp_path, capsys):
+        mailmap = tmp_path / ".mailmap"
+        mailmap.write_text("Bob <bob@x.com> old <bob@x.com>\nAlice <a@x.com>\n")
+        result = run(["normalize", "--mailmap", str(mailmap)])
+        assert result == 0
+        assert "Normalized" in capsys.readouterr().out
+        lines = mailmap.read_text().splitlines()
+        assert lines[0] == "Alice <a@x.com>"
+        assert lines[1] == "Bob <bob@x.com>"
+
+    def test_dry_run(self, tmp_path, capsys):
+        mailmap = tmp_path / ".mailmap"
+        original = "Bob <bob@x.com> old <bob@x.com>\n"
+        mailmap.write_text(original)
+        result = run(["normalize", "--mailmap", str(mailmap), "--dry-run"])
+        assert result == 1
+        assert "Normalized content" in capsys.readouterr().out
+        assert mailmap.read_text() == original
+
+    def test_missing_file(self, tmp_path, capsys):
+        result = run(["normalize", "--mailmap", str(tmp_path / "nope")])
+        assert result == 1
+        assert "does not exist" in capsys.readouterr().out
+
+    def test_stats_format1_collapses(self, tmp_path, capsys):
+        mailmap = tmp_path / ".mailmap"
+        mailmap.write_text(
+            "Alice <alice@x.com> old-alice <alice@x.com>\n"
+            "Bob <bob@x.com> old-bob <bob@x.com>\n"
+        )
+        run(["normalize", "--mailmap", str(mailmap)])
+        output = capsys.readouterr().out
+        assert "2 same-email aliases collapsed to Format 1" in output
+        assert "2 → 2 entries" in output
+
+    def test_stats_duplicates_removed(self, tmp_path, capsys):
+        mailmap = tmp_path / ".mailmap"
+        mailmap.write_text(
+            "Alice <alice@x.com> old <old@y.com>\nAlice <alice@x.com> old <old@y.com>\n"
+        )
+        run(["normalize", "--mailmap", str(mailmap)])
+        output = capsys.readouterr().out
+        assert "1 duplicate removed" in output
+        assert "2 → 1 entries" in output
+
+    def test_stats_in_dry_run(self, tmp_path, capsys):
+        mailmap = tmp_path / ".mailmap"
+        mailmap.write_text("Alice <alice@x.com> old <alice@x.com>\n")
+        run(["normalize", "--mailmap", str(mailmap), "--dry-run"])
+        output = capsys.readouterr().out
+        assert "1 same-email alias collapsed to Format 1" in output
+        assert "1 → 1 entries" in output
+
+    @patch("mailmap_checker.cli.get_mailmap_file_config", return_value=None)
+    def test_git_dir_resolves_mailmap(self, _mock_cfg, tmp_path, capsys):
+        repo = tmp_path / "repo"
+        repo.mkdir()
+        mailmap = repo / ".mailmap"
+        mailmap.write_text("Bob <bob@x.com> old <bob@x.com>\nAlice <a@x.com>\n")
+        result = run(["normalize", "--git-dir", str(repo)])
+        assert result == 0
+        lines = mailmap.read_text().splitlines()
+        assert lines[0] == "Alice <a@x.com>"
+        assert lines[1] == "Bob <bob@x.com>"

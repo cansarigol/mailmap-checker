@@ -24,3 +24,12 @@
   always_run: true
   pass_filenames: false
   stages: [pre-commit]
+
+- id: mailmap-normalize
+  name: Normalize .mailmap
+  description: Deduplicate, collapse to Format 1, and sort .mailmap entries.
+  entry: mailmap-checker normalize
+  language: python
+  always_run: true
+  pass_filenames: false
+  stages: [pre-commit]

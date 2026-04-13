@@ -70,6 +70,17 @@ Suggested .mailmap entries (canonical chosen by name heuristic):
 
 If Rule 2 produces false positives on very large repositories, disable it with `--no-local-part-matching`.
 
+### Mailmap source resolution
+
+Just like Git itself, `mailmap-checker` reads and merges entries from multiple sources:
+
+1. **`--mailmap <path>`** — explicit path (highest priority)
+2. **`mailmap.file`** Git config — `git config mailmap.file` (used when no explicit `--mailmap` is given)
+3. **`.mailmap`** in the repository root (default fallback)
+4. **`mailmap.blob`** Git config — `git config mailmap.blob` (e.g. `HEAD:.mailmap`, read from a Git object)
+
+Entries from all applicable sources are merged before checking. This means a project that stores mappings in a committed blob, a separate file, or the default `.mailmap` will all be handled correctly.
+
 ## Installation
 
 ### Pre-commit hook (recommended)
@@ -92,6 +103,7 @@ Then run `pre-commit autoupdate` to pin the latest release.
 | `mailmap-check` | Fail if any identity is missing from `.mailmap` |
 | `mailmap-fix` | Automatically add missing entries to `.mailmap` |
 | `mailmap-fix-dry-run` | Preview suggested entries without modifying the file |
+| `mailmap-normalize` | Deduplicate, collapse to Format 1, and sort entries |
 
 ### Standalone
 
@@ -132,6 +144,18 @@ mailmap-checker fix
 
 # Choose canonical by commit count
 mailmap-checker fix --by-commit-count
+```
+
+### `normalize`
+
+Deduplicate, collapse same-email aliases to [Format 1](https://git-scm.com/docs/gitmailmap) (`Proper Name <email>`), and sort entries alphabetically. Does not require git — operates only on the `.mailmap` file.
+
+```bash
+# Preview
+mailmap-checker normalize --dry-run
+
+# Apply
+mailmap-checker normalize
 ```
 
 ### Common options
