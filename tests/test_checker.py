@@ -335,3 +335,71 @@ class TestFindGapsByCommitCount:
         gaps = find_gaps(identities, [])
         assert len(gaps) == 1
         assert gaps[0].canonical == id_real
+
+
+class TestFindGapsDisputedEmails:
+    """Emails mapped to different canonicals should not be heuristically grouped."""
+
+    def test_shared_email_different_canonicals_not_grouped(self):
+        """Two people sharing a workstation email are not grouped together."""
+        person_x = Identity("Person X", "personx@acme.com")
+        person_y = Identity("Person Y", "persony@acme.com")
+        alias_x = Identity("admin", "User@Workstation.local")
+        alias_y = Identity("Person Y", "user@Workstation.local")
+        identities = {person_x, person_y, alias_x, alias_y}
+        entries = [
+            MailmapEntry(canonical=person_x, alias=alias_x),
+            MailmapEntry(canonical=person_y, alias=alias_y),
+        ]
+        gaps = find_gaps(identities, entries)
+        assert gaps == []
+
+    def test_same_email_same_canonical_still_grouped(self):
+        canonical = Identity("Alice", "alice@acme.com")
+        alias1 = Identity("alice.j", "shared@x.com")
+        alias2 = Identity("old-alice", "shared@x.com")
+        identities = {canonical, alias1, alias2}
+        entries = [
+            MailmapEntry(canonical=canonical, alias=alias1),
+            MailmapEntry(canonical=canonical, alias=alias2),
+        ]
+        gaps = find_gaps(identities, entries)
+        assert gaps == []
+
+    def test_disputed_email_does_not_affect_other_emails(self):
+        person_x = Identity("Person X", "personx@acme.com")
+        person_y = Identity("Person Y", "persony@acme.com")
+        alias_x = Identity("admin", "shared@pc.local")
+        alias_y = Identity("Person Y", "shared@pc.local")
+        alice = Identity("Alice", "alice@example.com")
+        alice_j = Identity("alice.j", "alice@example.com")
+        identities = {person_x, person_y, alias_x, alias_y, alice, alice_j}
+        entries = [
+            MailmapEntry(canonical=person_x, alias=alias_x),
+            MailmapEntry(canonical=person_y, alias=alias_y),
+        ]
+        gaps = find_gaps(identities, entries)
+        assert len(gaps) == 1
+        assert all(m.email == "alice@example.com" for m in gaps[0].identities)
+
+    def test_disputed_email_skips_local_part_matching(self):
+        """Local-part matching should also be skipped for disputed emails."""
+        person_a = Identity("PersonA", "persona@real.com")
+        person_b = Identity("PersonB", "personb@real.com")
+        alias_a = Identity("PersonA", "shared.longname@acme.com")
+        alias_b = Identity("PersonB", "shared.longname@other.com")
+        identities = {person_a, person_b, alias_a, alias_b}
+        entries = [
+            MailmapEntry(canonical=person_a, alias=alias_a),
+            MailmapEntry(canonical=person_b, alias=alias_b),
+        ]
+        gaps = find_gaps(identities, entries)
+        assert gaps == []
+
+    def test_no_disputed_emails_normal_grouping(self):
+        identities = {
+            Identity("Alice", "alice@example.com"),
+            Identity("alice.j", "alice@example.com"),
+        }
+        gaps = find_gaps(identities, [])
+        assert len(gaps) == 1

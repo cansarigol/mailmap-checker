@@ -38,10 +38,30 @@ def _build_identity_groups(
         uf.find(identity)
     for entry in entries:
         uf.union(entry.canonical, entry.alias)
-    _union_by_normalized_email(uf, all_identities)
+    disputed = _find_disputed_emails(entries)
+    heuristic_identities = (
+        {i for i in all_identities if i.normalized_email not in disputed}
+        if disputed
+        else all_identities
+    )
+    _union_by_normalized_email(uf, heuristic_identities)
     if local_part_matching:
-        _union_by_email_local_part(uf, all_identities)
+        _union_by_email_local_part(uf, heuristic_identities)
     return uf.groups()
+
+
+def _find_disputed_emails(entries: list[MailmapEntry]) -> frozenset[str]:
+    """Emails mapped to different canonicals — different people share them."""
+    alias_to_canonicals: dict[str, set[str]] = {}
+    for entry in entries:
+        alias_email = entry.alias.normalized_email
+        canonical_email = entry.canonical.normalized_email
+        alias_to_canonicals.setdefault(alias_email, set()).add(canonical_email)
+    return frozenset(
+        email
+        for email, canonicals in alias_to_canonicals.items()
+        if len(canonicals) > 1
+    )
 
 
 def _detect_missing_entries(

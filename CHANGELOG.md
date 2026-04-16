@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/), and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [0.3.6] - 2026-04-16
+
+### Fixed
+
+- **Disputed email detection**: when the same email is mapped to different canonical identities in `.mailmap`, the checker automatically skips heuristic grouping for that email, preventing false positives when different people share a generic email address.
+
 ## [0.3.5] - 2026-04-13
 
 ### Added
@@ -81,6 +87,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/), and this
 - Identity grouping via Union-Find: same email (case-insensitive) and same email local-part across domains.
 - Pre-commit hook integration (`mailmap-check`).
 
+[0.3.6]: https://github.com/cansarigol/mailmap-checker/compare/v0.3.5...v0.3.6
 [0.3.5]: https://github.com/cansarigol/mailmap-checker/compare/v0.3.4...v0.3.5
 [0.3.4]: https://github.com/cansarigol/mailmap-checker/compare/v0.3.3...v0.3.4
 [0.3.3]: https://github.com/cansarigol/mailmap-checker/compare/v0.3.2...v0.3.3

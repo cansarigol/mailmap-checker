@@ -359,3 +359,22 @@ class TestNormalize:
         lines = mailmap.read_text().splitlines()
         assert lines[0] == "Alice <a@x.com>"
         assert lines[1] == "Bob <bob@x.com>"
+
+
+class TestDisputedEmails:
+    @patch("mailmap_checker.cli.get_identity_counts")
+    def test_shared_email_with_different_canonicals(self, mock_get, tmp_path, capsys):
+        mailmap = tmp_path / ".mailmap"
+        mailmap.write_text(
+            "Person X <personx@acme.com> admin <shared@pc.local>\n"
+            "Person Y <persony@acme.com> Person Y <shared@pc.local>\n"
+        )
+        mock_get.return_value = {
+            Identity("Person X", "personx@acme.com"): 10,
+            Identity("Person Y", "persony@acme.com"): 5,
+            Identity("admin", "shared@pc.local"): 2,
+            Identity("Person Y", "shared@pc.local"): 3,
+        }
+        result = run(["check", "--mailmap", str(mailmap)])
+        assert result == 0
+        assert "properly mapped" in capsys.readouterr().out

@@ -81,6 +81,16 @@ Just like Git itself, `mailmap-checker` reads and merges entries from multiple s
 
 Entries from all applicable sources are merged before checking. This means a project that stores mappings in a committed blob, a separate file, or the default `.mailmap` will all be handled correctly.
 
+### Shared emails (different people, same address)
+
+When two different people share the same email address (e.g. a generic workstation account), the checker automatically detects this from the `.mailmap` file. If the same email is mapped to different canonical identities, the checker knows they are different people and does not group them together.
+
+```
+# .mailmap — two different people share user@workstation.local
+Alice Johnson <alice@acme.com> admin <user@workstation.local>
+Bob Smith <bob@acme.com> Bob Smith <user@workstation.local>
+```
+
 ## Installation
 
 ### Pre-commit hook (recommended)
