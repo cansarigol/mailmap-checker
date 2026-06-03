@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/), and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [0.3.7] - 2026-06-03
+
+### Fixed
+
+- **Windows encoding fix**: Git output is now explicitly read as UTF-8 instead of using the system encoding. This fixes identities with non-ASCII characters (e.g. accented names) being silently dropped on Windows ([#1](https://github.com/cansarigol/mailmap-checker/issues/1)).
+
 ## [0.3.6] - 2026-04-16
 
 ### Fixed
@@ -87,6 +93,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/), and this
 - Identity grouping via Union-Find: same email (case-insensitive) and same email local-part across domains.
 - Pre-commit hook integration (`mailmap-check`).
 
+[0.3.7]: https://github.com/cansarigol/mailmap-checker/compare/v0.3.6...v0.3.7
 [0.3.6]: https://github.com/cansarigol/mailmap-checker/compare/v0.3.5...v0.3.6
 [0.3.5]: https://github.com/cansarigol/mailmap-checker/compare/v0.3.4...v0.3.5
 [0.3.4]: https://github.com/cansarigol/mailmap-checker/compare/v0.3.3...v0.3.4

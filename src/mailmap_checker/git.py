@@ -23,7 +23,7 @@ def _run_git_log(git_dir: Path | None = None) -> subprocess.CompletedProcess[str
     cmd.extend(["log", f"--format={_FORMAT}"])
     # Arguments are fully hardcoded; no user input reaches this call.
     return subprocess.run(  # nosec B603 # noqa: S603
-        cmd, capture_output=True, text=True, check=True
+        cmd, capture_output=True, encoding="utf-8", check=True
     )
 
 
@@ -34,7 +34,7 @@ def get_mailmap_file_config(git_dir: Path | None = None) -> str | None:
     cmd.extend(["config", "mailmap.file"])
     # Arguments are fully hardcoded; no user input reaches this call.
     result = subprocess.run(  # nosec B603 # noqa: S603
-        cmd, capture_output=True, text=True
+        cmd, capture_output=True, encoding="utf-8"
     )
     if result.returncode == 0 and result.stdout.strip():
         return result.stdout.strip()
@@ -48,7 +48,7 @@ def get_mailmap_blob_config(git_dir: Path | None = None) -> str | None:
     cmd.extend(["config", "mailmap.blob"])
     # Arguments are fully hardcoded; no user input reaches this call.
     result = subprocess.run(  # nosec B603 # noqa: S603
-        cmd, capture_output=True, text=True
+        cmd, capture_output=True, encoding="utf-8"
     )
     if result.returncode == 0 and result.stdout.strip():
         return result.stdout.strip()
@@ -62,7 +62,7 @@ def read_mailmap_blob(git_dir: Path | None, ref: str) -> str | None:
     cmd.extend(["cat-file", "blob", ref])
     # Arguments are fully hardcoded; no user input reaches this call.
     result = subprocess.run(  # nosec B603 # noqa: S603
-        cmd, capture_output=True, text=True
+        cmd, capture_output=True, encoding="utf-8"
     )
     if result.returncode == 0:
         return result.stdout
